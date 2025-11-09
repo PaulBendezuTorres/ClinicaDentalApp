@@ -2,17 +2,13 @@ import ttkbootstrap as ttk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 from gui.vista_pacientes import PaginaPacientes
+from gui.vista_cita import PaginaAgendarCita 
 
 class PaginaDashboard(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         ttk.Label(self, text="Dashboard - Citas de Hoy", font=("Segoe UI", 18, "bold")).pack(pady=20, padx=20)
-
-class PaginaAgendarCita(ttk.Frame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ttk.Label(self, text="Agendar Nueva Cita", font=("Segoe UI", 18, "bold")).pack(pady=20, padx=20)
-
+        
 class App(ttk.Window):
     def __init__(self):
         super().__init__(themename="superhero")
@@ -86,6 +82,7 @@ class App(ttk.Window):
         self.paginas_container.grid_columnconfigure(0, weight=1)
         
         self.paginas = {}
+        
         for F in (PaginaDashboard, PaginaAgendarCita, PaginaPacientes):
             page_name = F.__name__.replace("Pagina", "")
             frame = F(self.paginas_container)
@@ -93,6 +90,7 @@ class App(ttk.Window):
             frame.grid(row=0, column=0, sticky="nsew")
             
         self.mostrar_pagina("Dashboard") # Carga la página inicial y aplica el estilo activo
+        
 
     def mostrar_pagina(self, page_name):
         # Actualiza el estilo de los botones

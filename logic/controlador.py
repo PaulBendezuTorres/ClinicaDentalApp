@@ -55,16 +55,22 @@ def obtener_lista_consultorios() -> List[Dict]:
     # ¡Añadimos esta nueva función para que la vista no llame a la DB directamente!
     return consultorio_queries.obtener_consultorios()
 
-def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: int) -> List[str]:
-   # Cambiamos todas las llamadas a consultas
+def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: int, paciente_id: int) -> List[str]: # <-- 1. Añadimos paciente_id
+    # ... (obtener citas, horarios, dentista, tratamiento no cambia) ...
     citas = cita_queries.obtener_citas_por_fecha(fecha)
     horarios = horario_queries.obtener_reglas_horarios_dentistas()
     dentista = dentista_queries.obtener_dentista_por_id(dentista_id)
     tratamiento = tratamiento_queries.obtener_tratamiento_por_id(tratamiento_id)
+    
+    # --- INICIO DE LA NUEVA LÓGICA ---
+    # 2. Obtenemos las preferencias del paciente
+    preferencias = paciente_queries.obtener_preferencias_paciente(paciente_id)
+    # --- FIN DE LA NUEVA LÓGICA ---
 
     if not dentista or not tratamiento:
         return []
 
+    # ... (generar hechos de citas, horarios y tratamiento no cambia) ...
     hechos_citas = procesador.generar_hechos_prolog_citas(citas)
     hechos_horarios = procesador.generar_hechos_prolog_horarios(
         [h for h in horarios if int(h["dentista_id"]) == dentista_id]
@@ -78,34 +84,14 @@ def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: in
     for linea in (hechos_citas + "\n" + hechos_horarios + "\n" + hechos_trat).splitlines():
         if linea.strip():
             prolog.assertz(linea.strip()[:-1])
-
-    fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
-    dia_semana = _dia_semana_es(fecha_dt)
-
-    dname = dentista["nombre"].replace("'", "\\'")
-    rangos = list(prolog.query(f"horario_laboral('{dname}','{dia_semana}', Ini, Fin)"))
-    if not rangos:
-        return []
-
-    slots_candidatos = []
-    for r in rangos:
-        slots_candidatos += _generar_slots(r["Ini"], r["Fin"], paso_min=30)
-
-    hay_equipo = _ExisteEquipoEspecial()
-    if hay_equipo:
-        for hhmm in slots_candidatos:
-            prolog.assertz(f"equipo_especial_disponible('{fecha}','{hhmm}')")
-
-    tname = tratamiento["nombre"].replace("'", "\\'")
-    resultados = []
-    for hhmm in slots_candidatos:
-        q = list(prolog.query(
-            f"encontrar_hora_valida('{dname}','{tname}','{fecha}','{dia_semana}','{hhmm}')"
-        ))
-        if q:
-            resultados.append(hhmm)
-
-    return sorted(list(dict.fromkeys(resultados)))
+            
+    # --- INICIO DE LA NUEVA LÓGICA ---
+    # 3. "Enseñamos" a Prolog las preferencias del paciente
+    for pref in preferencias:
+        dia = pref['dia_semana']
+        turno = pref['turno']
+        # Creamos un hecho dinámico como: paciente_no_disponible('lunes', 'mañana').
+        prolog.assertz(f"paciente_no_disponible('{dia}', '{turno}')")
 
 def confirmar_cita(datos_cita: Dict) -> int:
     return cita_queries.guardar_nueva_cita(

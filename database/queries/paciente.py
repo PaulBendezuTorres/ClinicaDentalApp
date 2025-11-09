@@ -27,3 +27,16 @@ def actualizar_paciente(id: int, nombre: str, telefono: str, dni: str, direccion
     args = (id, nombre, telefono, dni, direccion, correo, genero)
     cur.callproc('sp_actualizar_paciente', args)
     cur.close(); cn.close()
+
+def obtener_preferencias_paciente(paciente_id: int) -> List[Dict]:
+    """Obtiene los días y turnos no disponibles para un paciente."""
+    cn = get_db_connection()
+    cur = cn.cursor()
+    cur.execute("""
+        SELECT dia_semana, turno 
+        FROM preferencias_pacientes 
+        WHERE paciente_id = %s
+    """, (paciente_id,))
+    data = fetch_all_dict(cur)
+    cur.close(); cn.close()
+    return data
