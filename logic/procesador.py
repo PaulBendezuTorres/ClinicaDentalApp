@@ -1,13 +1,28 @@
 from typing import List, Dict
+from datetime import timedelta
 
 def _esc(s: str) -> str:
     return s.replace("'", "\\'")
+
+def _format_time(time_obj) -> str:
+    """
+    Formatea de manera robusta un objeto de tiempo (puede ser timedelta o datetime.time)
+    a una cadena 'HH:MM'.
+    """
+    if hasattr(time_obj, 'strftime'): # Es un objeto time o datetime
+        return time_obj.strftime("%H:%M")
+    if isinstance(time_obj, timedelta): # Es un timedelta de MySQL
+        total_seconds = int(time_obj.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        return f"{hours:02}:{minutes:02}"
+    return str(time_obj)[:5] # Fallback por si acaso
 
 def generar_hechos_prolog_citas(lista_citas_db: List[Dict]) -> str:
     def cita_to_fact(c):
         dname = _esc(c["dentista_nombre"])
         fecha = str(c["fecha"])
-        hora = c["hora_inicio"].strftime("%H:%M") if hasattr(c["hora_inicio"], "strftime") else str(c["hora_inicio"])[:5]
+        hora = _format_time(c["hora_inicio"])
         return f"cita_ocupada('{dname}','{fecha}','{hora}')."
 
     def trat_to_duracion(c):
@@ -31,8 +46,8 @@ def generar_hechos_prolog_horarios(lista_horarios_db: List[Dict]) -> str:
     def horario_to_fact(h):
         dname = _esc(h["dentista_nombre"])
         dia = h["dia_semana"]
-        hi = h["hora_inicio"].strftime("%H:%M") if hasattr(h["hora_inicio"], "strftime") else str(h["hora_inicio"])[:5]
-        hf = h["hora_fin"].strftime("%H:%M") if hasattr(h["hora_fin"], "strftime") else str(h["hora_fin"])[:5]
+        hi = _format_time(h["hora_inicio"])
+        hf = _format_time(h["hora_fin"])
         return f"horario_laboral('{dname}','{dia}','{hi}','{hf}')."
 
     hechos = map(horario_to_fact, lista_horarios_db)

@@ -2,20 +2,17 @@ from datetime import datetime, timedelta
 from typing import List, Dict
 from pyswip import Prolog
 import os
+
 from database.queries import paciente as paciente_queries
 from database.queries import dentista as dentista_queries
 from database.queries import tratamiento as tratamiento_queries
 from database.queries import cita as cita_queries
 from database.queries import horario as horario_queries
 from database.queries import consultorio as consultorio_queries
-
 from logic import procesador
 
-def obtener_historial_paciente(paciente_id: int) -> List[Dict]:
-    return cita_queries.obtener_citas_por_paciente(paciente_id)
-
 def _dia_semana_es(d: datetime) -> str:
-    dias = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"]
+    dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
     return dias[d.weekday()]
 
 def _generar_slots(inicio: str, fin: str, paso_min=30) -> List[str]:
@@ -23,18 +20,16 @@ def _generar_slots(inicio: str, fin: str, paso_min=30) -> List[str]:
     h1 = datetime.strptime(fin, "%H:%M")
     t = h0
     slots = []
-    while t <= h1:
+    while t < h1:
         slots.append(t.strftime("%H:%M"))
         t += timedelta(minutes=paso_min)
     return slots
 
 def _ExisteEquipoEspecial() -> bool:
-    # Cambiamos la llamada
     consultorios = consultorio_queries.obtener_consultorios()
     return any(int(c["equipo_especial"]) == 1 for c in consultorios)
 
 def obtener_lista_pacientes() -> List[Dict]:
-    # Cambiamos la llamada
     return paciente_queries.obtener_pacientes()
 
 def crear_paciente(nombre: str, telefono: str, dni: str, direccion: str, correo: str, genero: str) -> int:
@@ -43,34 +38,29 @@ def crear_paciente(nombre: str, telefono: str, dni: str, direccion: str, correo:
 def actualizar_paciente(id: int, nombre: str, telefono: str, dni: str, direccion: str, correo: str, genero: str):
     return paciente_queries.actualizar_paciente(id, nombre, telefono, dni, direccion, correo, genero)
 
+def obtener_historial_paciente(paciente_id: int) -> List[Dict]:
+    return cita_queries.obtener_citas_por_paciente(paciente_id)
+
 def obtener_lista_dentistas() -> List[Dict]:
-    # Cambiamos la llamada
     return dentista_queries.obtener_dentistas()
 
 def obtener_lista_tratamientos() -> List[Dict]:
-    # Cambiamos la llamada
     return tratamiento_queries.obtener_tratamientos()
 
 def obtener_lista_consultorios() -> List[Dict]:
-    # ¡Añadimos esta nueva función para que la vista no llame a la DB directamente!
     return consultorio_queries.obtener_consultorios()
 
-def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: int, paciente_id: int) -> List[str]: # <-- 1. Añadimos paciente_id
-    # ... (obtener citas, horarios, dentista, tratamiento no cambia) ...
+def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: int, paciente_id: int, 
+                              filtro_turno: str = None, filtro_dias: list = None) -> List[str]:
     citas = cita_queries.obtener_citas_por_fecha(fecha)
     horarios = horario_queries.obtener_reglas_horarios_dentistas()
     dentista = dentista_queries.obtener_dentista_por_id(dentista_id)
     tratamiento = tratamiento_queries.obtener_tratamiento_por_id(tratamiento_id)
-    
-    # --- INICIO DE LA NUEVA LÓGICA ---
-    # 2. Obtenemos las preferencias del paciente
     preferencias = paciente_queries.obtener_preferencias_paciente(paciente_id)
-    # --- FIN DE LA NUEVA LÓGICA ---
 
     if not dentista or not tratamiento:
         return []
 
-    # ... (generar hechos de citas, horarios y tratamiento no cambia) ...
     hechos_citas = procesador.generar_hechos_prolog_citas(citas)
     hechos_horarios = procesador.generar_hechos_prolog_horarios(
         [h for h in horarios if int(h["dentista_id"]) == dentista_id]
@@ -85,13 +75,52 @@ def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: in
         if linea.strip():
             prolog.assertz(linea.strip()[:-1])
             
-    # --- INICIO DE LA NUEVA LÓGICA ---
-    # 3. "Enseñamos" a Prolog las preferencias del paciente
     for pref in preferencias:
         dia = pref['dia_semana']
         turno = pref['turno']
-        # Creamos un hecho dinámico como: paciente_no_disponible('lunes', 'mañana').
         prolog.assertz(f"paciente_no_disponible('{dia}', '{turno}')")
+
+    if filtro_turno:
+        prolog.assertz(f"filtro_turno('{filtro_turno.lower()}')")
+
+    if filtro_dias:
+        for dia in filtro_dias:
+            prolog.assertz(f"filtro_dia('{dia}')")
+
+    fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
+    dia_semana = _dia_semana_es(fecha_dt)
+
+    dname = dentista["nombre"].replace("'", "\\'")
+    rangos = list(prolog.query(f"horario_laboral('{dname}','{dia_semana}', Ini, Fin)"))
+    if not rangos:
+        return []
+
+    slots_candidatos = []
+    for r in rangos:
+        slots_candidatos += _generar_slots(r["Ini"], r["Fin"], paso_min=30)
+
+    hay_equipo = _ExisteEquipoEspecial()
+    if hay_equipo:
+        consultorios_especiales = [c for c in consultorio_queries.obtener_consultorios() if c["equipo_especial"] == 1]
+        citas_dia = cita_queries.obtener_citas_por_fecha(fecha)
+        
+        for hhmm in slots_candidatos:
+            citas_en_hora = [c for c in citas_dia if str(c['hora_inicio'])[:5] == hhmm]
+            consultorios_ocupados = len([c for c in citas_en_hora if c['consultorio_id'] in [cs['id'] for cs in consultorios_especiales]])
+            
+            if consultorios_ocupados < len(consultorios_especiales):
+                 prolog.assertz(f"equipo_especial_disponible('{fecha}','{hhmm}')")
+
+    tname = tratamiento["nombre"].replace("'", "\\'")
+    resultados = []
+    for hhmm in slots_candidatos:
+        q = list(prolog.query(
+            f"encontrar_hora_valida('{dname}','{tname}','{fecha}','{dia_semana}','{hhmm}')"
+        ))
+        if q:
+            resultados.append(hhmm)
+
+    return sorted(list(dict.fromkeys(resultados)))
 
 def confirmar_cita(datos_cita: Dict) -> int:
     return cita_queries.guardar_nueva_cita(
