@@ -1,7 +1,8 @@
 
 from datetime import datetime, timedelta, date
-from typing import List, Dict
+from typing import List, Dict, Optional
 from pyswip import Prolog
+import bcrypt
 import os
 
 from database.queries import paciente as paciente_queries
@@ -10,6 +11,7 @@ from database.queries import tratamiento as tratamiento_queries
 from database.queries import cita as cita_queries
 from database.queries import horario as horario_queries
 from database.queries import consultorio as consultorio_queries
+from database.queries import usuario as usuario_queries
 from logic import procesador
 
 
@@ -192,3 +194,16 @@ def cerrar_prolog():
             print("Motor Prolog cerrado correctamente.")
         except Exception as e:
             print(f"Error al intentar cerrar el motor Prolog: {e}")
+def verificar_credenciales(nombre_usuario: str, contrasena_plana: str) -> Optional[Dict]:
+
+    usuario_db = usuario_queries.obtener_usuario_por_nombre(nombre_usuario)
+    
+    if not usuario_db:
+        return None 
+
+    contrasena_hash_db = usuario_db['contrasena_hash'].encode('utf-8')
+
+    if bcrypt.checkpw(contrasena_plana.encode('utf-8'), contrasena_hash_db):
+        return usuario_db 
+    else:
+        return None 

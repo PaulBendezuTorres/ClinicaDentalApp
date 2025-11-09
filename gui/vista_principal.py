@@ -10,14 +10,20 @@ class PaginaDashboard(ttk.Frame):
         ttk.Label(self, text="Dashboard - Citas de Hoy", font=("Segoe UI", 18, "bold")).pack(pady=20, padx=20)
         
 class App(ttk.Window):
-    def __init__(self):
+    # --- INICIO DE CAMBIOS ---
+    def __init__(self, usuario_data): # 1. Acepta 'usuario_data'
         super().__init__(themename="superhero")
-        self.title("Clínica Dental")
+        
+        self.usuario_data = usuario_data # 2. Guarda los datos del usuario
+        
+        # 3. Usa los datos en el título
+        self.title(f"Clínica Dental - (Usuario: {self.usuario_data['nombre_usuario']})")
         
         self._centrar_ventana(1280, 720) 
 
         self.protocol("WM_DELETE_WINDOW", self.accion_no_permitida)
         self.crear_widgets()
+    # --- FIN DE CAMBIOS ---
 
     def _centrar_ventana(self, width, height):
         self.update_idletasks()
