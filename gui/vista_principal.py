@@ -80,13 +80,13 @@ class App(ttk.Toplevel): # 1. Cambiado de ttk.Window a ttk.Toplevel
         footer_frame = ttk.Frame(sidebar, bootstyle="secondary")
         footer_frame.pack(side="bottom", fill="x", padx=10, pady=10)
         
-        ttk.Button(footer_frame, text="Cerrar Sesión", command=lambda: print("TODO: Implementar Login"), bootstyle="warning-outline").pack(fill="x", pady=4)
+        # Este botón ahora destruye SÓLO esta ventana (App), permitiendo volver al login.
+        ttk.Button(footer_frame, text="Cerrar Sesión", command=self.destroy, bootstyle="warning-outline").pack(fill="x", pady=4)
         
-        # Ahora 'destroy' cerrará esta ventana Toplevel y 
-        # permitirá que el script termine limpiamente.
-        ttk.Button(footer_frame, text="Salir", command=self.destroy, bootstyle="danger").pack(fill="x", pady=4)
-        
+        # Este botón destruye la ventana MAESTRA (el login), cerrando toda la aplicación.
+        ttk.Button(footer_frame, text="Salir", command=self.master.destroy, bootstyle="danger").pack(fill="x", pady=4)
         # --- Contenedor de páginas ---
+        
         self.paginas_container = ttk.Frame(container)
         self.paginas_container.grid(row=0, column=1, sticky="nsew")
         

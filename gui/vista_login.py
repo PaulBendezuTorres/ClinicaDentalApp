@@ -1,5 +1,6 @@
 import ttkbootstrap as ttk
 from tkinter import messagebox
+import tkinter as tk
 
 class VistaLogin(ttk.Window):
     def __init__(self, on_login_success):
@@ -61,6 +62,13 @@ class VistaLogin(ttk.Window):
             
             self.on_login_success(self, usuario_data) 
 
-            self.destroy()
+            try:
+
+                self.deiconify()
+                self.ent_contrasena.delete(0, 'end')
+                self.lbl_error.config(text="")
+                self.ent_usuario.focus_set()
+            except tk.TclError:
+                pass
         else:
             self.lbl_error.config(text="Credenciales incorrectas.")
