@@ -170,3 +170,13 @@ def confirmar_cita(datos_cita: Dict) -> int:
         datos_cita["fecha"],
         datos_cita["hora_inicio"]
     )
+def cerrar_prolog():
+    """Cierra la instancia del motor Prolog si fue creada."""
+    global _prolog_engine
+    if _prolog_engine is not None:
+        try:
+            # La forma más directa de pedirle a Prolog que termine es con 'halt.'
+            list(_prolog_engine.query("halt."))
+            print("Motor Prolog cerrado correctamente.")
+        except Exception as e:
+            print(f"Error al intentar cerrar el motor Prolog: {e}")
