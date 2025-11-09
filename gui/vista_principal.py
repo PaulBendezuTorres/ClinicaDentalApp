@@ -46,17 +46,39 @@ class App(ttk.Window):
         try:
             logo_img = Image.open("assets/logo.png").resize((150, 150), Image.Resampling.LANCZOS)
             self.logo = ImageTk.PhotoImage(logo_img)
-            ttk.Label(sidebar, image=self.logo).pack(pady=20)
+            ttk.Label(sidebar, image=self.logo, bootstyle="secondary").pack(pady=20)
         except FileNotFoundError:
-            ttk.Label(sidebar, text="Logo Aquí").pack(pady=20)
+            ttk.Label(sidebar, text="Logo Aquí", bootstyle="secondary", font=("Segoe UI", 16)).pack(pady=20)
             
-        ttk.Button(sidebar, text="Dashboard", command=lambda: self.mostrar_pagina("Dashboard"), bootstyle="info").pack(fill="x", padx=10, pady=5)
-        ttk.Button(sidebar, text="Agendar Cita", command=lambda: self.mostrar_pagina("AgendarCita"), bootstyle="info").pack(fill="x", padx=10, pady=5)
-        ttk.Button(sidebar, text="Pacientes", command=lambda: self.mostrar_pagina("Pacientes"), bootstyle="info").pack(fill="x", padx=10, pady=5)
+        # --- Frame para botones de navegación ---
+        nav_frame = ttk.Frame(sidebar, bootstyle="secondary")
+        nav_frame.pack(fill="x", padx=10, pady=10)
         
-        ttk.Button(sidebar, text="Salir", command=self.destroy, bootstyle="danger").pack(side="bottom", fill="x", padx=10, pady=10)
-        ttk.Button(sidebar, text="Cerrar Sesión", command=lambda: print("TODO: Implementar Login"), bootstyle="warning").pack(side="bottom", fill="x", padx=10, pady=5)
+        self.nav_buttons = {}
+        buttons_info = [
+            ("Dashboard", "Dashboard"),
+            ("Agendar Cita", "AgendarCita"),
+            ("Pacientes", "Pacientes")
+        ]
         
+        for text, page_name in buttons_info:
+            btn = ttk.Button(
+                nav_frame, 
+                text=text, 
+                command=lambda p=page_name: self.mostrar_pagina(p), 
+                bootstyle="light-outline"  # Estilo inactivo por defecto
+            )
+            btn.pack(fill="x", pady=4)
+            self.nav_buttons[page_name] = btn
+        
+        # --- Frame para botones de salida (al fondo) ---
+        footer_frame = ttk.Frame(sidebar, bootstyle="secondary")
+        footer_frame.pack(side="bottom", fill="x", padx=10, pady=10)
+        
+        ttk.Button(footer_frame, text="Cerrar Sesión", command=lambda: print("TODO: Implementar Login"), bootstyle="warning-outline").pack(fill="x", pady=4)
+        ttk.Button(footer_frame, text="Salir", command=self.destroy, bootstyle="danger").pack(fill="x", pady=4)
+        
+        # --- Contenedor de páginas ---
         self.paginas_container = ttk.Frame(container)
         self.paginas_container.grid(row=0, column=1, sticky="nsew")
         
@@ -70,8 +92,16 @@ class App(ttk.Window):
             self.paginas[page_name] = frame
             frame.grid(row=0, column=0, sticky="nsew")
             
-        self.mostrar_pagina("Dashboard")
+        self.mostrar_pagina("Dashboard") # Carga la página inicial y aplica el estilo activo
 
     def mostrar_pagina(self, page_name):
+        # Actualiza el estilo de los botones
+        for name, button in self.nav_buttons.items():
+            if name == page_name:
+                button.config(bootstyle="light") # Estilo activo
+            else:
+                button.config(bootstyle="light-outline") # Estilo inactivo
+        
+        # Muestra la página
         frame = self.paginas[page_name]
         frame.tkraise()
