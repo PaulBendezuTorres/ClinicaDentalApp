@@ -1,10 +1,9 @@
-# gui/vista_pacientes.py (VERSIÓN MEJORADA DE LAYOUT Y ESTILO)
-
 import ttkbootstrap as ttk
 from tkinter import messagebox
 from logic import controlador
 from ttkbootstrap.scrolled import ScrolledFrame
-from gui.ventana_formulario_paciente import VentanaFormularioPaciente # Asegúrate que esta ruta es correcta
+from gui.ventana_formulario_paciente import VentanaFormularioPaciente 
+from gui.ventana_historial_paciente import VentanaHistorialPaciente 
 
 class PacienteCard(ttk.Frame):
     def __init__(self, parent, paciente_data, edit_callback):
@@ -40,13 +39,14 @@ class PacienteCard(ttk.Frame):
         ttk.Button(botones_frame, text="Historial", command=self._ver_historial, bootstyle="light-outline").pack(pady=5, fill="x")
 
     def _ver_historial(self):
-        messagebox.showinfo("Próximamente", f"Aquí se mostrará el historial del paciente {self.paciente_data['nombre']}.")
+        VentanaHistorialPaciente(self, self.paciente_data)
+
 
 class PaginaPacientes(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self._build()
-
+        
     def _build(self):
         main_frame = ttk.Frame(self, padding=(20, 10))
         main_frame.pack(fill="both", expand=True)

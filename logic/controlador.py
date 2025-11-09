@@ -11,6 +11,9 @@ from database.queries import consultorio as consultorio_queries
 
 from logic import procesador
 
+def obtener_historial_paciente(paciente_id: int) -> List[Dict]:
+    return cita_queries.obtener_citas_por_paciente(paciente_id)
+
 def _dia_semana_es(d: datetime) -> str:
     dias = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"]
     return dias[d.weekday()]

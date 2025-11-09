@@ -14,9 +14,7 @@ def _test_db_connection():
 
 if __name__ == "__main__":
     if _test_db_connection():
-        app = App()  # <-- CAMBIO 2: Creamos una instancia de 'App'
+        app = App() 
         app.mainloop()
     else:
-        # Si la conexión falla, es buena idea no abrir la app.
-        # Podemos simplemente imprimir un mensaje y salir.
         print("La aplicación no se puede iniciar debido a un error de conexión con la base de datos.")
