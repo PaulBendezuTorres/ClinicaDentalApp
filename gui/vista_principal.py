@@ -9,14 +9,15 @@ class PaginaDashboard(ttk.Frame):
         super().__init__(parent)
         ttk.Label(self, text="Dashboard - Citas de Hoy", font=("Segoe UI", 18, "bold")).pack(pady=20, padx=20)
         
-class App(ttk.Window):
-    # --- INICIO DE CAMBIOS ---
-    def __init__(self, usuario_data): # 1. Acepta 'usuario_data'
-        super().__init__(themename="superhero")
+# --- CAMBIOS AQUÍ ---
+class App(ttk.Toplevel): # 1. Cambiado de ttk.Window a ttk.Toplevel
+    
+    # 2. El __init__ ahora acepta 'parent' y 'usuario_data'
+    def __init__(self, parent, usuario_data):
+        super().__init__(parent) # 3. Se llama al super() de Toplevel
         
-        self.usuario_data = usuario_data # 2. Guarda los datos del usuario
+        self.usuario_data = usuario_data 
         
-        # 3. Usa los datos en el título
         self.title(f"Clínica Dental - (Usuario: {self.usuario_data['nombre_usuario']})")
         
         self._centrar_ventana(1280, 720) 
@@ -34,6 +35,7 @@ class App(ttk.Window):
         self.geometry(f"{width}x{height}+{x}+{y}")
 
     def accion_no_permitida(self):
+
         messagebox.showwarning("Acción no permitida", "Usa el botón 'Salir' para cerrar la aplicación.")
 
     def crear_widgets(self):
@@ -48,6 +50,7 @@ class App(ttk.Window):
         try:
             logo_img = Image.open("assets/logo.png").resize((150, 150), Image.Resampling.LANCZOS)
             self.logo = ImageTk.PhotoImage(logo_img)
+            # Esta línea ahora funcionará
             ttk.Label(sidebar, image=self.logo, bootstyle="secondary").pack(pady=20)
         except FileNotFoundError:
             ttk.Label(sidebar, text="Logo Aquí", bootstyle="secondary", font=("Segoe UI", 16)).pack(pady=20)
@@ -68,7 +71,7 @@ class App(ttk.Window):
                 nav_frame, 
                 text=text, 
                 command=lambda p=page_name: self.mostrar_pagina(p), 
-                bootstyle="light-outline"  # Estilo inactivo por defecto
+                bootstyle="light-outline"
             )
             btn.pack(fill="x", pady=4)
             self.nav_buttons[page_name] = btn
@@ -78,6 +81,9 @@ class App(ttk.Window):
         footer_frame.pack(side="bottom", fill="x", padx=10, pady=10)
         
         ttk.Button(footer_frame, text="Cerrar Sesión", command=lambda: print("TODO: Implementar Login"), bootstyle="warning-outline").pack(fill="x", pady=4)
+        
+        # Ahora 'destroy' cerrará esta ventana Toplevel y 
+        # permitirá que el script termine limpiamente.
         ttk.Button(footer_frame, text="Salir", command=self.destroy, bootstyle="danger").pack(fill="x", pady=4)
         
         # --- Contenedor de páginas ---
@@ -95,17 +101,15 @@ class App(ttk.Window):
             self.paginas[page_name] = frame
             frame.grid(row=0, column=0, sticky="nsew")
             
-        self.mostrar_pagina("Dashboard") # Carga la página inicial y aplica el estilo activo
+        self.mostrar_pagina("Dashboard") 
         
 
     def mostrar_pagina(self, page_name):
-        # Actualiza el estilo de los botones
         for name, button in self.nav_buttons.items():
             if name == page_name:
-                button.config(bootstyle="light") # Estilo activo
+                button.config(bootstyle="light") 
             else:
-                button.config(bootstyle="light-outline") # Estilo inactivo
+                button.config(bootstyle="light-outline")
         
-        # Muestra la página
         frame = self.paginas[page_name]
         frame.tkraise()

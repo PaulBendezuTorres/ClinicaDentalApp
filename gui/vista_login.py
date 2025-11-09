@@ -1,5 +1,3 @@
-# gui/vista_login.py
-
 import ttkbootstrap as ttk
 from tkinter import messagebox
 
@@ -8,7 +6,6 @@ class VistaLogin(ttk.Window):
         super().__init__(themename="superhero", title="Clínica Dental - Inicio de Sesión")
         self.on_login_success = on_login_success
 
-        # Centrar la ventana
         self.update_idletasks()
         width = 400
         height = 450
@@ -25,7 +22,6 @@ class VistaLogin(ttk.Window):
         main_frame = ttk.Frame(self, padding=40)
         main_frame.pack(expand=True, fill="both")
 
-        # Logo (placeholder)
         ttk.Label(main_frame, text="Clínica Dental", font=("Segoe UI", 24, "bold"), bootstyle="primary").pack(pady=(0, 30))
 
         ttk.Label(main_frame, text="Nombre de Usuario:").pack(anchor="w")
@@ -43,17 +39,16 @@ class VistaLogin(ttk.Window):
         btn_ingresar = ttk.Button(main_frame, text="Ingresar", command=self._on_ingresar, bootstyle="success")
         btn_ingresar.pack(fill="x", pady=20)
 
-        # Vincular la tecla Enter para intentar el login
         self.ent_contrasena.bind("<Return>", self._on_ingresar)
         self.ent_usuario.bind("<Return>", lambda e: self.ent_contrasena.focus_set())
 
     def _on_ingresar(self, event=None):
-        from logic import controlador # Importación local para evitar importación circular
+        from logic import controlador 
         
         usuario = self.ent_usuario.get().strip()
         contrasena = self.ent_contrasena.get()
         
-        self.lbl_error.config(text="") # Limpiamos el error
+        self.lbl_error.config(text="") 
 
         if not usuario or not contrasena:
             self.lbl_error.config(text="Por favor, ingrese usuario y contraseña.")
@@ -62,7 +57,10 @@ class VistaLogin(ttk.Window):
         usuario_data = controlador.verificar_credenciales(usuario, contrasena)
 
         if usuario_data:
-            self.destroy() # Cerramos la ventana de login
-            self.on_login_success(usuario_data) # Llamamos al callback de éxito
+            self.withdraw() 
+            
+            self.on_login_success(self, usuario_data) 
+
+            self.destroy()
         else:
             self.lbl_error.config(text="Credenciales incorrectas.")
