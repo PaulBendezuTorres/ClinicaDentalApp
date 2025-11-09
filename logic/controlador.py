@@ -79,8 +79,7 @@ def obtener_lista_consultorios() -> List[Dict]:
     return consultorio_queries.obtener_consultorios()
 
 def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: int, paciente_id: int, 
-                              filtro_turno: str = None, filtro_dias: list = None) -> List[str]:
-    # --- LÓGICA DE BÚSQUEDA REFACTORIZADA ---
+                              filtro_turno: str = None, filtro_dias: list = None) -> List[Dict]:
     _inicializar_prolog()
     prolog = _prolog_engine
     _limpiar_hechos_dinamicos(prolog)
@@ -89,6 +88,8 @@ def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: in
     horarios = horario_queries.obtener_reglas_horarios_dentistas()
     dentista = dentista_queries.obtener_dentista_por_id(dentista_id)
     tratamiento = tratamiento_queries.obtener_tratamiento_por_id(tratamiento_id)
+    
+    # --- LÍNEA CORREGIDA ---
     preferencias = paciente_queries.obtener_preferencias_paciente(paciente_id)
 
     if not dentista or not tratamiento:
@@ -135,19 +136,28 @@ def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: in
                  prolog.assertz(f"equipo_especial_disponible('{fecha}','{hhmm}')")
 
     tname = tratamiento["nombre"].replace("'", "\\'")
-    resultados = []
+    resultados_horas = []
     for hhmm in slots_candidatos:
         if list(prolog.query(f"encontrar_hora_valida('{dname}','{tname}','{fecha}','{dia_semana}','{hhmm}')")):
-            resultados.append(hhmm)
+            resultados_horas.append(hhmm)
 
-    return sorted(list(dict.fromkeys(resultados)))
+    resultados_horas = sorted(list(dict.fromkeys(resultados_horas)))
 
+    resultados_finales = []
+    for hora in resultados_horas:
+        resultados_finales.append({
+            "fecha": fecha,
+            "hora": hora,
+            "dia_semana": dia_semana
+        })
+    return resultados_finales
 
 def encontrar_proxima_cita(dentista_id: int, tratamiento_id: int, paciente_id: int, 
                            filtro_turno: str, filtro_dias: list) -> List[Dict]:
     fecha_inicio = date.today() + timedelta(days=1)
     limite_busqueda = fecha_inicio + timedelta(days=90)
     fecha_actual = fecha_inicio
+
     while fecha_actual <= limite_busqueda:
         dia_semana_actual = _dia_semana_es(fecha_actual)
         if dia_semana_actual in filtro_dias:
@@ -156,8 +166,10 @@ def encontrar_proxima_cita(dentista_id: int, tratamiento_id: int, paciente_id: i
                 fecha_str, dentista_id, tratamiento_id, paciente_id,
                 filtro_turno, [dia_semana_actual] 
             )
+
             if horarios_disponibles:
-                return [{'fecha': fecha_str, 'hora': h} for h in horarios_disponibles]
+                return horarios_disponibles
+
         fecha_actual += timedelta(days=1)
     return []
 
