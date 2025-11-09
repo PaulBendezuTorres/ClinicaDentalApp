@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+
+from datetime import datetime, timedelta, date
 from typing import List, Dict
 from pyswip import Prolog
 import os
@@ -10,6 +11,33 @@ from database.queries import cita as cita_queries
 from database.queries import horario as horario_queries
 from database.queries import consultorio as consultorio_queries
 from logic import procesador
+
+
+
+_prolog_engine = None 
+
+def _inicializar_prolog():
+    """Crea la instancia del motor Prolog si aún no existe."""
+    global _prolog_engine
+    if _prolog_engine is None:
+        _prolog_engine = Prolog()
+        reglas_path = os.path.join(os.path.dirname(__file__), "..", "prolog", "motor_reglas.pl")
+        _prolog_engine.consult(os.path.normpath(reglas_path))
+
+def _limpiar_hechos_dinamicos(prolog: Prolog):
+    """Elimina todos los hechos temporales de la base de conocimiento de Prolog."""
+    prolog.retractall("cita_ocupada(_,_,_)")
+    prolog.retractall("paciente_no_disponible(_,_)")
+    prolog.retractall("filtro_turno(_)")
+    prolog.retractall("filtro_dia(_)")
+    prolog.retractall("equipo_especial_disponible(_,_)")
+    # Limpiamos también horarios y tratamientos para asegurar un estado limpio
+    prolog.retractall("horario_laboral(_,_,_,_)")
+    prolog.retractall("duracion_tratamiento(_,_)")
+    prolog.retractall("requiere_equipo(_,_)")
+
+# --- FIN DE LA ARQUITECTURA OPTIMIZADA ---
+
 
 def _dia_semana_es(d: datetime) -> str:
     dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
@@ -52,6 +80,11 @@ def obtener_lista_consultorios() -> List[Dict]:
 
 def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: int, paciente_id: int, 
                               filtro_turno: str = None, filtro_dias: list = None) -> List[str]:
+    # --- LÓGICA DE BÚSQUEDA REFACTORIZADA ---
+    _inicializar_prolog()
+    prolog = _prolog_engine
+    _limpiar_hechos_dinamicos(prolog)
+
     citas = cita_queries.obtener_citas_por_fecha(fecha)
     horarios = horario_queries.obtener_reglas_horarios_dentistas()
     dentista = dentista_queries.obtener_dentista_por_id(dentista_id)
@@ -67,18 +100,12 @@ def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: in
     )
     hechos_trat = procesador.generar_hechos_prolog_tratamiento_unico(tratamiento)
 
-    prolog = Prolog()
-    reglas_path = os.path.join(os.path.dirname(__file__), "..", "prolog", "motor_reglas.pl")
-    prolog.consult(os.path.normpath(reglas_path))
-
     for linea in (hechos_citas + "\n" + hechos_horarios + "\n" + hechos_trat).splitlines():
         if linea.strip():
             prolog.assertz(linea.strip()[:-1])
             
     for pref in preferencias:
-        dia = pref['dia_semana']
-        turno = pref['turno']
-        prolog.assertz(f"paciente_no_disponible('{dia}', '{turno}')")
+        prolog.assertz(f"paciente_no_disponible('{pref['dia_semana']}', '{pref['turno']}')")
 
     if filtro_turno:
         prolog.assertz(f"filtro_turno('{filtro_turno.lower()}')")
@@ -97,30 +124,42 @@ def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: in
 
     slots_candidatos = []
     for r in rangos:
-        slots_candidatos += _generar_slots(r["Ini"], r["Fin"], paso_min=30)
+        slots_candidatos += _generar_slots(r["Ini"], r["Fin"])
 
-    hay_equipo = _ExisteEquipoEspecial()
-    if hay_equipo:
-        consultorios_especiales = [c for c in consultorio_queries.obtener_consultorios() if c["equipo_especial"] == 1]
+    if _ExisteEquipoEspecial():
+        consultorios_especiales = [c["id"] for c in consultorio_queries.obtener_consultorios() if c["equipo_especial"] == 1]
         citas_dia = cita_queries.obtener_citas_por_fecha(fecha)
-        
         for hhmm in slots_candidatos:
-            citas_en_hora = [c for c in citas_dia if str(c['hora_inicio'])[:5] == hhmm]
-            consultorios_ocupados = len([c for c in citas_en_hora if c['consultorio_id'] in [cs['id'] for cs in consultorios_especiales]])
-            
-            if consultorios_ocupados < len(consultorios_especiales):
+            citas_en_hora_especial = [c for c in citas_dia if str(c['hora_inicio'])[:5] == hhmm and c['consultorio_id'] in consultorios_especiales]
+            if len(citas_en_hora_especial) < len(consultorios_especiales):
                  prolog.assertz(f"equipo_especial_disponible('{fecha}','{hhmm}')")
 
     tname = tratamiento["nombre"].replace("'", "\\'")
     resultados = []
     for hhmm in slots_candidatos:
-        q = list(prolog.query(
-            f"encontrar_hora_valida('{dname}','{tname}','{fecha}','{dia_semana}','{hhmm}')"
-        ))
-        if q:
+        if list(prolog.query(f"encontrar_hora_valida('{dname}','{tname}','{fecha}','{dia_semana}','{hhmm}')")):
             resultados.append(hhmm)
 
     return sorted(list(dict.fromkeys(resultados)))
+
+
+def encontrar_proxima_cita(dentista_id: int, tratamiento_id: int, paciente_id: int, 
+                           filtro_turno: str, filtro_dias: list) -> List[Dict]:
+    fecha_inicio = date.today() + timedelta(days=1)
+    limite_busqueda = fecha_inicio + timedelta(days=90)
+    fecha_actual = fecha_inicio
+    while fecha_actual <= limite_busqueda:
+        dia_semana_actual = _dia_semana_es(fecha_actual)
+        if dia_semana_actual in filtro_dias:
+            fecha_str = fecha_actual.strftime('%Y-%m-%d')
+            horarios_disponibles = buscar_horarios_disponibles(
+                fecha_str, dentista_id, tratamiento_id, paciente_id,
+                filtro_turno, [dia_semana_actual] 
+            )
+            if horarios_disponibles:
+                return [{'fecha': fecha_str, 'hora': h} for h in horarios_disponibles]
+        fecha_actual += timedelta(days=1)
+    return []
 
 def confirmar_cita(datos_cita: Dict) -> int:
     return cita_queries.guardar_nueva_cita(
