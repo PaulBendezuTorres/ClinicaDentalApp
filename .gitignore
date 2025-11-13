@@ -1,0 +1,3 @@
+echo "venv/" >> .gitignore
+echo "pycache/" >> .gitignore
+echo ".vscode/" >> .gitignore
