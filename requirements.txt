@@ -1,4 +1,7 @@
+# --- LIBRERÍAS REQUERIDAS ---
 mysql-connector-python
 pyswip
 ttkbootstrap
 Pillow
+bcrypt
+tkcalendar
