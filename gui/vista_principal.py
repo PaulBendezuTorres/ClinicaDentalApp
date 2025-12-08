@@ -19,12 +19,16 @@ class App(ttk.Toplevel):
         
         self.usuario_data = usuario_data 
         
-        # Mostramos quién está logueado en el título
         self.title(f"Clínica Dental - (Usuario: {self.usuario_data['nombre_usuario']} | Rol: {self.usuario_data['rol']})")
         
         self._centrar_ventana(1280, 720) 
 
         self.protocol("WM_DELETE_WINDOW", self.accion_no_permitida)
+        
+        style = ttk.Style()
+
+        style.configure('TCombobox', padding=(10, 8, 10, 8)) 
+       
         self.crear_widgets()
 
     def _centrar_ventana(self, width, height):

@@ -94,6 +94,33 @@ def modificar_dentista(dentista_id: int, nombre: str, especialidad: str):
 
 def borrar_dentista(dentista_id: int):
     dentista_queries.eliminar_dentista_db(dentista_id)
+    
+def obtener_horarios_dentista(dentista_id: int) -> List[Dict]:
+    return horario_queries.obtener_horarios_por_dentista(dentista_id)
+
+def crear_horario_dentista(dentista_id: int, dia: str, inicio: str, fin: str):
+    return horario_queries.agregar_horario(dentista_id, dia, inicio, fin)
+
+def borrar_horario_dentista(horario_id: int):
+    return horario_queries.eliminar_horario(horario_id)
+
+def registrar_tratamiento(nombre: str, duracion: int, costo: float, req_equipo: int):
+    tratamiento_queries.crear_tratamiento_db(nombre, duracion, costo, req_equipo)
+
+def modificar_tratamiento(t_id: int, nombre: str, duracion: int, costo: float, req_equipo: int):
+    tratamiento_queries.actualizar_tratamiento_db(t_id, nombre, duracion, costo, req_equipo)
+
+def borrar_tratamiento(t_id: int):
+    tratamiento_queries.eliminar_tratamiento_db(t_id)
+
+def registrar_consultorio(nombre: str, equipo_especial: int):
+    consultorio_queries.crear_consultorio_db(nombre, equipo_especial)
+
+def modificar_consultorio(c_id: int, nombre: str, equipo_especial: int):
+    consultorio_queries.actualizar_consultorio_db(c_id, nombre, equipo_especial)
+
+def borrar_consultorio(c_id: int):
+    consultorio_queries.eliminar_consultorio_db(c_id)
 
 def registrar_usuario(nombre: str, contrasena: str, rol: str):
     # Hasheamos la contraseña antes de enviarla a la BD
@@ -239,3 +266,28 @@ def verificar_credenciales(nombre_usuario: str, contrasena_plana: str) -> Option
         return usuario_db 
     else:
         return None 
+
+def obtener_eliminados(tipo: str) -> List[Dict]:
+    if tipo == "Usuarios":
+        return usuario_queries.obtener_usuarios_eliminados()
+    elif tipo == "Dentistas":
+        return dentista_queries.obtener_dentistas_eliminados()
+    elif tipo == "Tratamientos":
+        return tratamiento_queries.obtener_tratamientos_eliminados()
+    elif tipo == "Consultorios":
+        return consultorio_queries.obtener_consultorios_eliminados()
+    elif tipo == "Pacientes":
+        return paciente_queries.obtener_pacientes_eliminados()
+    return []
+
+def restaurar_elemento(tipo: str, id_elemento: int):
+    if tipo == "Usuarios":
+        usuario_queries.reactivar_usuario_db(id_elemento)
+    elif tipo == "Dentistas":
+        dentista_queries.reactivar_dentista_db(id_elemento)
+    elif tipo == "Tratamientos":
+        tratamiento_queries.reactivar_tratamiento_db(id_elemento)
+    elif tipo == "Consultorios":
+        consultorio_queries.reactivar_consultorio_db(id_elemento)
+    elif tipo == "Pacientes":
+        paciente_queries.reactivar_paciente_db(id_elemento)

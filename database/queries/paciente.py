@@ -55,3 +55,17 @@ def desactivar_paciente(paciente_id: int):
     cur = cn.cursor()
     cur.execute("UPDATE pacientes SET activo = 0 WHERE id = %s", (paciente_id,))
     cur.close(); cn.close()
+
+def obtener_pacientes_eliminados() -> List[Dict]:
+    cn = get_db_connection()
+    cur = cn.cursor()
+    cur.execute("SELECT id, nombre, dni FROM pacientes WHERE activo = 0")
+    data = fetch_all_dict(cur)
+    cur.close(); cn.close()
+    return data
+
+def reactivar_paciente_db(id: int):
+    cn = get_db_connection()
+    cur = cn.cursor()
+    cur.execute("UPDATE pacientes SET activo = 1 WHERE id = %s", (id,))
+    cur.close(); cn.close()

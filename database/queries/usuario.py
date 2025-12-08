@@ -51,3 +51,17 @@ def eliminar_usuario_db(user_id: int):
     cur = cn.cursor()
     cur.execute("UPDATE usuarios SET activo = 0 WHERE id = %s", (user_id,))
     cur.close(); cn.close()
+
+def obtener_usuarios_eliminados() -> List[Dict]:
+    cn = get_db_connection()
+    cur = cn.cursor()
+    cur.execute("SELECT id, nombre_usuario AS nombre, rol FROM usuarios WHERE activo = 0")
+    data = fetch_all_dict(cur)
+    cur.close(); cn.close()
+    return data
+
+def reactivar_usuario_db(id: int):
+    cn = get_db_connection()
+    cur = cn.cursor()
+    cur.execute("UPDATE usuarios SET activo = 1 WHERE id = %s", (id,))
+    cur.close(); cn.close()

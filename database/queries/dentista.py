@@ -44,3 +44,17 @@ def eliminar_dentista_db(dentista_id: int):
     cur = cn.cursor()
     cur.execute("UPDATE dentistas SET activo = 0 WHERE id = %s", (dentista_id,))
     cur.close(); cn.close()
+
+def obtener_dentistas_eliminados() -> List[Dict]:
+    cn = get_db_connection()
+    cur = cn.cursor()
+    cur.execute("SELECT id, nombre, especialidad FROM dentistas WHERE activo = 0")
+    data = fetch_all_dict(cur)
+    cur.close(); cn.close()
+    return data
+
+def reactivar_dentista_db(id: int):
+    cn = get_db_connection()
+    cur = cn.cursor()
+    cur.execute("UPDATE dentistas SET activo = 1 WHERE id = %s", (id,))
+    cur.close(); cn.close()
