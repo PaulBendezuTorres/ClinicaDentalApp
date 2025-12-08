@@ -38,9 +38,6 @@ def _limpiar_hechos_dinamicos(prolog: Prolog):
     prolog.retractall("duracion_tratamiento(_,_)")
     prolog.retractall("requiere_equipo(_,_)")
 
-# --- FIN DE LA ARQUITECTURA OPTIMIZADA ---
-
-
 def _dia_semana_es(d: datetime) -> str:
     dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
     return dias[d.weekday()]
@@ -79,6 +76,12 @@ def obtener_lista_tratamientos() -> List[Dict]:
 
 def obtener_lista_consultorios() -> List[Dict]:
     return consultorio_queries.obtener_consultorios()
+
+def obtener_lista_pacientes(filtro: str = "") -> List[Dict]:
+    return paciente_queries.obtener_pacientes(filtro)
+
+def eliminar_paciente(paciente_id: int):
+    return paciente_queries.desactivar_paciente(paciente_id)
 
 def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: int, paciente_id: int, 
                               filtro_turno: str = None, filtro_dias: list = None) -> List[Dict]:
