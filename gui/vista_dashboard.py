@@ -1,7 +1,6 @@
 import ttkbootstrap as ttk
 from tkinter import messagebox
 from logic import controlador
-from ttkbootstrap.scrolled import ScrolledFrame
 
 # --- CONFIGURACIÓN DE COLORES POR ESTADO ---
 ESTILOS_ESTADO = {
@@ -16,7 +15,6 @@ class CitaCard(ttk.Labelframe):
         estilo = ESTILOS_ESTADO.get(cita['estado'], {'color': 'light'})
         color_boot = estilo['color']
         
-        # El borde tendrá el color del estado
         super().__init__(parent, padding=15, bootstyle=color_boot)
         
         self.cita = cita
@@ -30,26 +28,20 @@ class CitaCard(ttk.Labelframe):
         left_frame.grid(row=0, column=0, padx=(0, 20), sticky="n")
         
         hora_str = str(cita['hora_inicio'])[:5]
-        # CORRECCIÓN VISUAL: Usamos el color del estado para la hora, se ve muy bien en fondo oscuro
         ttk.Label(left_frame, text=hora_str, font=("Segoe UI", 22, "bold"), bootstyle=color_boot).pack()
         ttk.Label(left_frame, text=f"{estilo['icono']} {cita['estado']}", font=("Segoe UI", 10), bootstyle=color_boot).pack(pady=5)
 
-        # --- COLUMNA 2: DETALLES (CORRECCIÓN DE CONTRASTE) ---
+        # --- COLUMNA 2: DETALLES ---
         center_frame = ttk.Frame(self)
         center_frame.grid(row=0, column=1, sticky="ew")
         
-        # Nombre del paciente en blanco (default en tema oscuro) o light
         ttk.Label(center_frame, text=cita['paciente'], font=("Segoe UI", 14, "bold"), bootstyle="light").pack(anchor="w")
-        
-        # Tratamiento en un color que resalte un poco pero sea legible (info o primary)
         ttk.Label(center_frame, text=f"Tratamiento: {cita['tratamiento']}", font=("Segoe UI", 11), bootstyle="info").pack(anchor="w", pady=(2,5))
         
-        # Detalles adicionales en blanco/gris claro (light) en lugar de secondary (gris oscuro)
         info_doc = f"Dr(a): {cita['dentista']}  |  {cita['consultorio']}"
         ttk.Label(center_frame, text=info_doc, font=("Segoe UI", 10), bootstyle="light").pack(anchor="w")
         
         if cita['fecha']: 
-             # Fecha en color claro
              ttk.Label(center_frame, text=f"Fecha: {cita['fecha']}", font=("Segoe UI", 10), bootstyle="warning").pack(anchor="w")
 
         # --- COLUMNA 3: ACCIONES ---
@@ -96,54 +88,87 @@ class PaginaDashboard(ttk.Frame):
         saludo = f"Hola, {self.usuario_data['nombre_usuario']}" if self.usuario_data else "Agenda"
         ttk.Label(header_frame, text=f"{saludo}", font=("Segoe UI", 22, "bold"), bootstyle="light").pack(side="left")
 
-        # --- Barra de Herramientas (Filtros y Búsqueda) ---
+        # --- Barra de Herramientas ---
         tool_frame = ttk.Frame(self, padding=(20, 0, 20, 10))
         tool_frame.pack(fill="x")
         
-        # 1. Filtro de Tiempo
         ttk.Label(tool_frame, text="Mostrar:", bootstyle="light").pack(side="left", padx=(0,5))
         self.cmb_filtro = ttk.Combobox(tool_frame, values=["Hoy", "Futuras", "Todas"], state="readonly", width=10)
         self.cmb_filtro.set("Hoy")
         self.cmb_filtro.pack(side="left")
         self.cmb_filtro.bind("<<ComboboxSelected>>", lambda e: self._cargar_citas())
 
-        # 2. Barra de Búsqueda (NUEVO)
         ttk.Label(tool_frame, text="Buscar Paciente:", bootstyle="light").pack(side="left", padx=(20, 5))
         self.ent_buscar = ttk.Entry(tool_frame, width=30)
         self.ent_buscar.pack(side="left")
         self.ent_buscar.bind("<Return>", lambda e: self._cargar_citas())
-        self.ent_buscar.bind("<KeyRelease>", lambda e: self._cargar_citas()) # Búsqueda en tiempo real
+        self.ent_buscar.bind("<KeyRelease>", lambda e: self._cargar_citas())
 
-        # Botón Refrescar
         ttk.Button(tool_frame, text="🔄", command=self._cargar_citas, bootstyle="secondary-outline").pack(side="right")
 
-        # --- Área de Scroll ---
-        self.canvas_scroll = ScrolledFrame(self, autohide=True, bootstyle="dark")
-        self.canvas_scroll.pack(fill="both", expand=True, padx=20, pady=10)
+        # --- ÁREA DE SCROLL MANUAL (CANVAS + SCROLLBAR) ---
+        # Esto reemplaza al ScrolledFrame automático para dar control total
         
-        self.cards_container = ttk.Frame(self.canvas_scroll, bootstyle="dark")
-        self.cards_container.pack(fill="x", expand=True)
+        # 1. Contenedor para Canvas y Scrollbar
+        scroll_container = ttk.Frame(self)
+        scroll_container.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # 2. La barra de desplazamiento VERTICAL
+        self.scrollbar = ttk.Scrollbar(scroll_container, orient="vertical", bootstyle="secondary-round")
+        self.scrollbar.pack(side="right", fill="y")
+
+        # 3. El Canvas (donde se dibujará todo)
+        self.canvas = ttk.Canvas(scroll_container, bd=0, highlightthickness=0)
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        # 4. Conectar Canvas y Scrollbar
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.scrollbar.configure(command=self.canvas.yview)
+
+        # 5. El Frame interno que contendrá las tarjetas
+        self.cards_container = ttk.Frame(self.canvas)
+        
+        # 6. Crear la ventana dentro del canvas
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_container, anchor="nw")
+
+        # 7. Eventos de configuración para que el scroll funcione
+        self.cards_container.bind("<Configure>", self._on_frame_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        
+        # 8. Habilitar la ruedita del mouse
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
         self.cards_container.columnconfigure(0, weight=1)
         self.cards_container.columnconfigure(1, weight=1)
 
         self._cargar_citas()
 
+    def _on_frame_configure(self, event):
+        """Actualiza la región de scroll cuando el contenido cambia."""
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _on_canvas_configure(self, event):
+        """Hace que el frame interno se estire al ancho del canvas."""
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+
+    def _on_mousewheel(self, event):
+        """Habilita el scroll con la rueda del ratón."""
+        # Solo hacer scroll si el contenido es más grande que la ventana
+        if self.cards_container.winfo_height() > self.canvas.winfo_height():
+            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
     def _cargar_citas(self):
         for widget in self.cards_container.winfo_children(): widget.destroy()
         
         filtro_tiempo = self.cmb_filtro.get().lower()
-        texto_buscar = self.ent_buscar.get().strip() # Obtenemos texto
+        texto_buscar = self.ent_buscar.get().strip()
         
-        # Llamamos al controlador con ambos filtros
         citas = controlador.listar_citas(filtro_tiempo, texto_buscar)
         
         if not citas:
-            msg = "No se encontraron citas."
-            if texto_buscar: msg = f"No hay citas para '{texto_buscar}'."
-            ttk.Label(self.cards_container, text=msg, font=("Segoe UI", 14), bootstyle="light").pack(pady=50)
+            ttk.Label(self.cards_container, text="No hay citas para mostrar.", font=("Segoe UI", 14), bootstyle="inverse-secondary").pack(pady=50)
             return
 
-        # Resumen
         resumen = f"Mostrando {len(citas)} citas"
         ttk.Label(self.cards_container, text=resumen, bootstyle="light").grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky="w")
 

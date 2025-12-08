@@ -32,6 +32,7 @@ CREATE TABLE `citas` (
   `tratamiento_id` int NOT NULL,
   `fecha` date NOT NULL,
   `hora_inicio` time NOT NULL,
+  `estado` enum('Pendiente','Confirmada','Cancelada','Realizada') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Pendiente',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_dentista_fecha_hora` (`dentista_id`,`fecha`,`hora_inicio`),
   KEY `paciente_id` (`paciente_id`),
@@ -41,7 +42,7 @@ CREATE TABLE `citas` (
   CONSTRAINT `citas_ibfk_2` FOREIGN KEY (`dentista_id`) REFERENCES `dentistas` (`id`),
   CONSTRAINT `citas_ibfk_3` FOREIGN KEY (`consultorio_id`) REFERENCES `consultorios` (`id`),
   CONSTRAINT `citas_ibfk_4` FOREIGN KEY (`tratamiento_id`) REFERENCES `tratamientos` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -50,7 +51,7 @@ CREATE TABLE `citas` (
 
 LOCK TABLES `citas` WRITE;
 /*!40000 ALTER TABLE `citas` DISABLE KEYS */;
-INSERT INTO `citas` VALUES (1,4,2,2,1,'2025-11-11','10:00:00'),(2,4,1,2,2,'2025-11-10','15:30:00'),(3,5,2,2,2,'2025-11-10','11:00:00'),(4,4,1,1,2,'2025-11-10','11:30:00'),(5,4,1,1,2,'2025-11-10','13:30:00'),(6,4,1,2,2,'2025-11-11','10:30:00'),(7,4,1,2,2,'2025-11-11','09:30:00'),(8,5,2,1,2,'2025-11-11','09:00:00');
+INSERT INTO `citas` VALUES (1,4,2,2,1,'2025-11-11','10:00:00','Pendiente'),(2,4,1,2,2,'2025-11-10','15:30:00','Pendiente'),(3,5,2,2,2,'2025-11-10','11:00:00','Pendiente'),(4,4,1,1,2,'2025-11-10','11:30:00','Realizada'),(5,4,1,1,2,'2025-11-10','13:30:00','Pendiente'),(6,4,1,2,2,'2025-11-11','10:30:00','Pendiente'),(7,4,1,2,2,'2025-11-11','09:30:00','Pendiente'),(8,5,2,1,2,'2025-11-11','09:00:00','Cancelada'),(9,2,1,2,2,'2025-12-09','10:30:00','Pendiente');
 /*!40000 ALTER TABLE `citas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -65,6 +66,7 @@ CREATE TABLE `consultorios` (
   `id` int NOT NULL AUTO_INCREMENT,
   `nombre_sala` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
   `equipo_especial` tinyint(1) NOT NULL DEFAULT '0',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -75,7 +77,7 @@ CREATE TABLE `consultorios` (
 
 LOCK TABLES `consultorios` WRITE;
 /*!40000 ALTER TABLE `consultorios` DISABLE KEYS */;
-INSERT INTO `consultorios` VALUES (1,'Sala 1',0),(2,'Sala 2',1);
+INSERT INTO `consultorios` VALUES (1,'Sala 1',1,1),(2,'Sala 2',1,1);
 /*!40000 ALTER TABLE `consultorios` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -90,6 +92,7 @@ CREATE TABLE `dentistas` (
   `id` int NOT NULL AUTO_INCREMENT,
   `nombre` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
   `especialidad` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -100,7 +103,7 @@ CREATE TABLE `dentistas` (
 
 LOCK TABLES `dentistas` WRITE;
 /*!40000 ALTER TABLE `dentistas` DISABLE KEYS */;
-INSERT INTO `dentistas` VALUES (1,'Dr. Sáenz','Endodoncia'),(2,'Dra. Rivera','Ortodoncia');
+INSERT INTO `dentistas` VALUES (1,'Dr. Sáenz','Endodoncia',1),(2,'Dra. Rivera','Ortodoncia',1);
 /*!40000 ALTER TABLE `dentistas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -120,7 +123,7 @@ CREATE TABLE `horarios_dentistas` (
   PRIMARY KEY (`id`),
   KEY `dentista_id` (`dentista_id`),
   CONSTRAINT `horarios_dentistas_ibfk_1` FOREIGN KEY (`dentista_id`) REFERENCES `dentistas` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -129,7 +132,7 @@ CREATE TABLE `horarios_dentistas` (
 
 LOCK TABLES `horarios_dentistas` WRITE;
 /*!40000 ALTER TABLE `horarios_dentistas` DISABLE KEYS */;
-INSERT INTO `horarios_dentistas` VALUES (1,1,'lunes','09:00:00','17:00:00'),(2,1,'martes','09:00:00','17:00:00'),(3,2,'lunes','10:00:00','18:00:00'),(4,1,'miercoles','09:00:00','13:00:00'),(5,2,'martes','09:00:00','13:00:00');
+INSERT INTO `horarios_dentistas` VALUES (1,1,'lunes','09:00:00','17:00:00'),(2,1,'martes','09:00:00','17:00:00'),(3,2,'lunes','10:00:00','18:00:00'),(4,1,'miercoles','09:00:00','13:00:00'),(5,2,'martes','09:00:00','13:00:00'),(6,1,'jueves','09:00:00','17:00:00'),(7,1,'viernes','09:00:00','17:00:00'),(8,1,'sabado','09:00:00','13:00:00');
 /*!40000 ALTER TABLE `horarios_dentistas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -148,6 +151,7 @@ CREATE TABLE `pacientes` (
   `direccion` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `correo` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `genero` enum('Masculino','Femenino','Otro') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Otro',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   UNIQUE KEY `dni` (`dni`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -159,7 +163,7 @@ CREATE TABLE `pacientes` (
 
 LOCK TABLES `pacientes` WRITE;
 /*!40000 ALTER TABLE `pacientes` DISABLE KEYS */;
-INSERT INTO `pacientes` VALUES (1,'Ana Rojas','999-111-222','11223344','','','Femenino'),(2,'Luis Pérez','999-222-333','22113344','','','Masculino'),(3,'Paul Torres','930604727','44332211','','','Masculino'),(4,'Juan Bendezu','999666333','1234578','','','Masculino'),(5,'Cecilia Torres','999666111','22334411','','','Femenino');
+INSERT INTO `pacientes` VALUES (1,'Ana Rojas','999-111-222','11223344','','','Femenino',1),(2,'Luis Pérez','999-222-333','22113344','','','Masculino',1),(3,'Paul Torres','930604727','44332211','','','Masculino',1),(4,'Juan Bendezu','999666333','1234578','','','Masculino',1),(5,'Cecilia Torres','999666111','22334411','','','Femenino',1);
 /*!40000 ALTER TABLE `pacientes` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -204,6 +208,7 @@ CREATE TABLE `tratamientos` (
   `duracion_minutos` int NOT NULL,
   `costo` decimal(10,2) NOT NULL,
   `requiere_equipo_especial` tinyint(1) NOT NULL DEFAULT '0',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -214,7 +219,7 @@ CREATE TABLE `tratamientos` (
 
 LOCK TABLES `tratamientos` WRITE;
 /*!40000 ALTER TABLE `tratamientos` DISABLE KEYS */;
-INSERT INTO `tratamientos` VALUES (1,'Limpieza',30,80.00,0),(2,'Endodoncia',90,450.00,1);
+INSERT INTO `tratamientos` VALUES (1,'Limpieza',30,80.00,0,1),(2,'Endodoncia',90,450.00,1,1);
 /*!40000 ALTER TABLE `tratamientos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -230,9 +235,10 @@ CREATE TABLE `usuarios` (
   `nombre_usuario` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `contrasena_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `rol` enum('admin','recepcionista') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'recepcionista',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   UNIQUE KEY `nombre_usuario` (`nombre_usuario`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -241,7 +247,7 @@ CREATE TABLE `usuarios` (
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` VALUES (1,'admin','$2b$12$r71I9ByJAfrD.MxYYLPreOPAYDmyWjtORhtoq.yfUuVzA1JhMoD7a','admin');
+INSERT INTO `usuarios` VALUES (1,'admin','$2b$12$r71I9ByJAfrD.MxYYLPreOPAYDmyWjtORhtoq.yfUuVzA1JhMoD7a','admin',1),(2,'paul123','$2b$12$Gg/M.u4S/4UC7v0Zx6BTZOrM15ZPHkvAGnTSOYPuWuk.I0fQV.VSm','recepcionista',1);
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -326,4 +332,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-11-13  0:09:54
+-- Dump completed on 2025-12-08  5:54:38
