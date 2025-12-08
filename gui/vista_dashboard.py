@@ -1,6 +1,7 @@
 import ttkbootstrap as ttk
 from tkinter import messagebox
-from logic import controlador
+from logic.sistema import sistema  # <-- NUEVO IMPORT
+from ttkbootstrap.scrolled import ScrolledFrame
 
 # --- CONFIGURACIÓN DE COLORES POR ESTADO ---
 ESTILOS_ESTADO = {
@@ -20,51 +21,39 @@ class CitaCard(ttk.Labelframe):
         self.cita = cita
         self.rol = rol_usuario
         self.callback = callback_estado
-        
         self.columnconfigure(1, weight=1) 
 
-        # --- COLUMNA 1: HORA Y ESTADO ---
+        # COLUMNA 1
         left_frame = ttk.Frame(self)
         left_frame.grid(row=0, column=0, padx=(0, 20), sticky="n")
-        
         hora_str = str(cita['hora_inicio'])[:5]
         ttk.Label(left_frame, text=hora_str, font=("Segoe UI", 22, "bold"), bootstyle=color_boot).pack()
         ttk.Label(left_frame, text=f"{estilo['icono']} {cita['estado']}", font=("Segoe UI", 10), bootstyle=color_boot).pack(pady=5)
 
-        # --- COLUMNA 2: DETALLES ---
+        # COLUMNA 2
         center_frame = ttk.Frame(self)
         center_frame.grid(row=0, column=1, sticky="ew")
-        
         ttk.Label(center_frame, text=cita['paciente'], font=("Segoe UI", 14, "bold"), bootstyle="light").pack(anchor="w")
         ttk.Label(center_frame, text=f"Tratamiento: {cita['tratamiento']}", font=("Segoe UI", 11), bootstyle="info").pack(anchor="w", pady=(2,5))
-        
         info_doc = f"Dr(a): {cita['dentista']}  |  {cita['consultorio']}"
         ttk.Label(center_frame, text=info_doc, font=("Segoe UI", 10), bootstyle="light").pack(anchor="w")
-        
         if cita['fecha']: 
              ttk.Label(center_frame, text=f"Fecha: {cita['fecha']}", font=("Segoe UI", 10), bootstyle="warning").pack(anchor="w")
 
-        # --- COLUMNA 3: ACCIONES ---
+        # COLUMNA 3
         right_frame = ttk.Frame(self)
         right_frame.grid(row=0, column=2, padx=(10, 0), sticky="e")
 
         if cita['estado'] == 'Pendiente':
-            ttk.Button(right_frame, text="Confirmar", bootstyle="info-outline", 
-                       command=lambda: self.accion("Confirmada")).pack(fill="x", pady=2)
+            ttk.Button(right_frame, text="Confirmar", bootstyle="info-outline", command=lambda: self.accion("Confirmada")).pack(fill="x", pady=2)
             if self.rol == 'admin':
-                ttk.Button(right_frame, text="Cancelar", bootstyle="danger-outline", 
-                           command=lambda: self.accion("Cancelada")).pack(fill="x", pady=2)
-
+                ttk.Button(right_frame, text="Cancelar", bootstyle="danger-outline", command=lambda: self.accion("Cancelada")).pack(fill="x", pady=2)
         elif cita['estado'] == 'Confirmada':
-            ttk.Button(right_frame, text="Finalizar", bootstyle="success", 
-                       command=lambda: self.accion("Realizada")).pack(fill="x", pady=2)
+            ttk.Button(right_frame, text="Finalizar", bootstyle="success", command=lambda: self.accion("Realizada")).pack(fill="x", pady=2)
             if self.rol == 'admin':
-                ttk.Button(right_frame, text="Cancelar", bootstyle="danger-outline", 
-                           command=lambda: self.accion("Cancelada")).pack(fill="x", pady=2)
-
+                ttk.Button(right_frame, text="Cancelar", bootstyle="danger-outline", command=lambda: self.accion("Cancelada")).pack(fill="x", pady=2)
         elif cita['estado'] == 'Cancelada':
              ttk.Label(right_frame, text="Cancelada", bootstyle="danger").pack()
-
         elif cita['estado'] == 'Realizada':
              ttk.Label(right_frame, text="Completada", bootstyle="success").pack()
 
@@ -81,14 +70,11 @@ class PaginaDashboard(ttk.Frame):
         self._build()
 
     def _build(self):
-        # --- Header ---
         header_frame = ttk.Frame(self, padding=20)
         header_frame.pack(fill="x")
-        
         saludo = f"Hola, {self.usuario_data['nombre_usuario']}" if self.usuario_data else "Agenda"
         ttk.Label(header_frame, text=f"{saludo}", font=("Segoe UI", 22, "bold"), bootstyle="light").pack(side="left")
 
-        # --- Barra de Herramientas ---
         tool_frame = ttk.Frame(self, padding=(20, 0, 20, 10))
         tool_frame.pack(fill="x")
         
@@ -106,56 +92,15 @@ class PaginaDashboard(ttk.Frame):
 
         ttk.Button(tool_frame, text="🔄", command=self._cargar_citas, bootstyle="secondary-outline").pack(side="right")
 
-        # --- ÁREA DE SCROLL MANUAL (CANVAS + SCROLLBAR) ---
-        # Esto reemplaza al ScrolledFrame automático para dar control total
+        self.canvas_scroll = ScrolledFrame(self, autohide=True, bootstyle="dark")
+        self.canvas_scroll.pack(fill="both", expand=True, padx=20, pady=10)
         
-        # 1. Contenedor para Canvas y Scrollbar
-        scroll_container = ttk.Frame(self)
-        scroll_container.pack(fill="both", expand=True, padx=20, pady=10)
-
-        # 2. La barra de desplazamiento VERTICAL
-        self.scrollbar = ttk.Scrollbar(scroll_container, orient="vertical", bootstyle="secondary-round")
-        self.scrollbar.pack(side="right", fill="y")
-
-        # 3. El Canvas (donde se dibujará todo)
-        self.canvas = ttk.Canvas(scroll_container, bd=0, highlightthickness=0)
-        self.canvas.pack(side="left", fill="both", expand=True)
-
-        # 4. Conectar Canvas y Scrollbar
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.scrollbar.configure(command=self.canvas.yview)
-
-        # 5. El Frame interno que contendrá las tarjetas
-        self.cards_container = ttk.Frame(self.canvas)
-        
-        # 6. Crear la ventana dentro del canvas
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_container, anchor="nw")
-
-        # 7. Eventos de configuración para que el scroll funcione
-        self.cards_container.bind("<Configure>", self._on_frame_configure)
-        self.canvas.bind("<Configure>", self._on_canvas_configure)
-        
-        # 8. Habilitar la ruedita del mouse
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-
+        self.cards_container = ttk.Frame(self.canvas_scroll, bootstyle="dark")
+        self.cards_container.pack(fill="x", expand=True)
         self.cards_container.columnconfigure(0, weight=1)
         self.cards_container.columnconfigure(1, weight=1)
 
         self._cargar_citas()
-
-    def _on_frame_configure(self, event):
-        """Actualiza la región de scroll cuando el contenido cambia."""
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def _on_canvas_configure(self, event):
-        """Hace que el frame interno se estire al ancho del canvas."""
-        self.canvas.itemconfig(self.canvas_window, width=event.width)
-
-    def _on_mousewheel(self, event):
-        """Habilita el scroll con la rueda del ratón."""
-        # Solo hacer scroll si el contenido es más grande que la ventana
-        if self.cards_container.winfo_height() > self.canvas.winfo_height():
-            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
     def _cargar_citas(self):
         for widget in self.cards_container.winfo_children(): widget.destroy()
@@ -163,10 +108,13 @@ class PaginaDashboard(ttk.Frame):
         filtro_tiempo = self.cmb_filtro.get().lower()
         texto_buscar = self.ent_buscar.get().strip()
         
-        citas = controlador.listar_citas(filtro_tiempo, texto_buscar)
+        # USAMOS EL SERVICIO DE CITAS
+        citas = sistema.cita.listar_dashboard(filtro_tiempo, texto_buscar)
         
         if not citas:
-            ttk.Label(self.cards_container, text="No hay citas para mostrar.", font=("Segoe UI", 14), bootstyle="inverse-secondary").pack(pady=50)
+            msg = "No se encontraron citas."
+            if texto_buscar: msg = f"No hay citas para '{texto_buscar}'."
+            ttk.Label(self.cards_container, text=msg, font=("Segoe UI", 14), bootstyle="inverse-dark").pack(pady=50)
             return
 
         resumen = f"Mostrando {len(citas)} citas"
@@ -181,7 +129,8 @@ class PaginaDashboard(ttk.Frame):
 
     def _cambiar_estado(self, cita_id, nuevo_estado):
         try:
-            controlador.cambiar_estado_cita(cita_id, nuevo_estado)
+            # USAMOS EL SERVICIO DE CITAS
+            sistema.cita.cambiar_estado(cita_id, nuevo_estado)
             self._cargar_citas() 
         except Exception as e:
             messagebox.showerror("Error", str(e))

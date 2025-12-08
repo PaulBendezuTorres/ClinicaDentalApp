@@ -1,6 +1,7 @@
 import ttkbootstrap as ttk
 from tkinter import messagebox
 import tkinter as tk
+from logic.sistema import sistema  
 
 class VistaLogin(ttk.Window):
     def __init__(self, on_login_success):
@@ -44,8 +45,6 @@ class VistaLogin(ttk.Window):
         self.ent_usuario.bind("<Return>", lambda e: self.ent_contrasena.focus_set())
 
     def _on_ingresar(self, event=None):
-        from logic import controlador 
-        
         usuario = self.ent_usuario.get().strip()
         contrasena = self.ent_contrasena.get()
         
@@ -55,15 +54,13 @@ class VistaLogin(ttk.Window):
             self.lbl_error.config(text="Por favor, ingrese usuario y contraseña.")
             return
 
-        usuario_data = controlador.verificar_credenciales(usuario, contrasena)
+        # USAMOS EL SERVICIO DE USUARIO DIRECTAMENTE
+        usuario_data = sistema.usuario.verificar_credenciales(usuario, contrasena)
 
         if usuario_data:
             self.withdraw() 
-            
             self.on_login_success(self, usuario_data) 
-
             try:
-
                 self.deiconify()
                 self.ent_contrasena.delete(0, 'end')
                 self.lbl_error.config(text="")

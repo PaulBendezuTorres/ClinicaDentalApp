@@ -1,13 +1,12 @@
 import ttkbootstrap as ttk
 from tkinter import messagebox
-from logic import controlador
+from logic.sistema import sistema  # <-- NUEVO IMPORT
 from ttkbootstrap.widgets import DateEntry
 from ttkbootstrap.scrolled import ScrolledFrame
 from datetime import date, timedelta, datetime
 import threading
 import queue
 
-# --- TARJETA DE HORARIO (SIN CAMBIOS) ---
 class HorarioCard(ttk.Frame):
     def __init__(self, parent, horario_data, select_callback):
         super().__init__(parent, padding=15, bootstyle="secondary")
@@ -15,7 +14,6 @@ class HorarioCard(ttk.Frame):
         self.select_callback = select_callback
         
         self.bind("<Button-1>", self._on_select)
-        
         self.columnconfigure(1, weight=1)
 
         self.lbl_icon = ttk.Label(self, text="🕒", font=("Segoe UI", 20), bootstyle="inverse-secondary")
@@ -47,67 +45,49 @@ class HorarioCard(ttk.Frame):
             child.config(bootstyle="inverse-secondary")
 
 
-# --- PÁGINA PRINCIPAL DE AGENDAR CITA ---
 class PaginaAgendarCita(ttk.Frame): 
     def __init__(self, parent, usuario_data=None):
         super().__init__(parent)
         self.usuario_data = usuario_data
         self.cola_resultados = queue.Queue()
         self.selected_horario_card = None
-        
         self._build()
         self._cargar_dropdowns()
-        
         self.after(100, self._procesar_cola)
 
     def _build(self):
-        # 1. CREAMOS UN SCROLL GENERAL PARA TODA LA PÁGINA
-        # Esto asegura que si la ventana es pequeña, aparezca una barra lateral derecha
-        main_scroll = ScrolledFrame(self, autohide=False) # autohide=False para que veas la barra si es necesario
+        main_scroll = ScrolledFrame(self, autohide=False)
         main_scroll.pack(fill="both", expand=True)
 
-        # 2. Ahora, todo el contenido se agrega a 'main_scroll' en lugar de 'self'
-        
-        # Header
         header = ttk.Frame(main_scroll, padding=20)
         header.pack(fill="x")
         ttk.Label(header, text="📅 Agendar Nueva Cita", font=("Segoe UI", 24, "bold"), bootstyle="light").pack(side="left")
 
-        # Contenedor dividido
         body = ttk.Frame(main_scroll, padding=(20, 0, 20, 20))
         body.pack(fill="both", expand=True)
-        body.columnconfigure(0, weight=4) # Formulario
-        body.columnconfigure(1, weight=6) # Resultados
+        body.columnconfigure(0, weight=4)
+        body.columnconfigure(1, weight=6)
 
-        # =================================================
-        # COLUMNA IZQUIERDA: FORMULARIOS
-        # =================================================
         left_col = ttk.Frame(body, padding=(0, 0, 20, 0))
         left_col.grid(row=0, column=0, sticky="nsew")
 
-        # --- GRUPO 1: DATOS BÁSICOS ---
         grp_datos = ttk.Labelframe(left_col, text=" 📝 Datos de la Cita ", padding=15, bootstyle="info")
         grp_datos.pack(fill="x", pady=(0, 20))
 
         self.cmb_paciente = ttk.Combobox(grp_datos, state="readonly")
         self._crear_campo(grp_datos, "👤 Paciente:", self.cmb_paciente)
-
         self.cmb_dentista = ttk.Combobox(grp_datos, state="readonly")
         self._crear_campo(grp_datos, "👨‍⚕️ Dentista:", self.cmb_dentista)
-
         self.cmb_tratamiento = ttk.Combobox(grp_datos, state="readonly")
         self._crear_campo(grp_datos, "🦷 Tratamiento:", self.cmb_tratamiento)
 
-        # --- GRUPO 2: BÚSQUEDA ---
         grp_busq = ttk.Labelframe(left_col, text=" 🔎 Criterios de Búsqueda ", padding=15, bootstyle="primary")
         grp_busq.pack(fill="x", pady=(0, 20))
 
-        # Fecha
         ttk.Label(grp_busq, text="Fecha Específica:", font=("Segoe UI", 10)).pack(anchor="w")
         self.ent_fecha = DateEntry(grp_busq, bootstyle="primary", firstweekday=0, dateformat="%Y-%m-%d")
         self.ent_fecha.pack(fill="x", pady=(5, 15))
 
-        # Filtros Flexibles
         ttk.Label(grp_busq, text="O busque por disponibilidad:", font=("Segoe UI", 10, "bold"), bootstyle="primary").pack(anchor="w", pady=(0, 10))
         
         self.cmb_turno = ttk.Combobox(grp_busq, values=["Cualquiera", "Mañana", "Tarde"], state="readonly")
@@ -121,50 +101,36 @@ class PaginaAgendarCita(ttk.Frame):
         self.check_dias_vars = {}
         dias_corto = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab"]
         dias_full = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado"]
-        
         for i, (nombre, key) in enumerate(zip(dias_corto, dias_full)):
             var = ttk.BooleanVar()
             chk = ttk.Checkbutton(dias_frame, text=nombre, variable=var, bootstyle="round-toggle")
             chk.grid(row=i//3, column=i%3, padx=5, pady=5, sticky="w")
             self.check_dias_vars[key] = var
 
-        # Botones de Búsqueda
         btn_frame = ttk.Frame(grp_busq)
         btn_frame.pack(fill="x", pady=15)
-        
         ttk.Button(btn_frame, text="Buscar en Fecha", command=self._on_buscar_fecha, bootstyle="outline-primary").pack(side="left", fill="x", expand=True, padx=(0, 5))
         ttk.Button(btn_frame, text="Buscar Próxima", command=self._on_buscar_proxima, bootstyle="primary").pack(side="left", fill="x", expand=True, padx=(5, 0))
 
-        # =================================================
-        # COLUMNA DERECHA: RESULTADOS
-        # =================================================
         right_col = ttk.Labelframe(body, text=" Resultados Disponibles ", padding=15, bootstyle="success")
         right_col.grid(row=0, column=1, sticky="nsew")
 
-        # Área de Scroll INTERNA (para los resultados)
-        # Nota: Aquí usamos height=400 para darle una altura fija mínima y que no colapse
         self.horarios_scroll = ScrolledFrame(right_col, autohide=True, height=400) 
         self.horarios_scroll.pack(fill="both", expand=True)
-        
         self.horarios_container = ttk.Frame(self.horarios_scroll)
         self.horarios_container.pack(fill="x", expand=True)
 
-        # Footer de confirmación
         footer_res = ttk.Frame(right_col, padding=(0, 15, 0, 0))
         footer_res.pack(fill="x", side="bottom")
-        
         ttk.Label(footer_res, text="🏥 Asignar Consultorio:", font=("Segoe UI", 10)).pack(anchor="w")
         self.cmb_consultorio = ttk.Combobox(footer_res, state="readonly")
         self.cmb_consultorio.pack(fill="x", pady=5)
-        
         self.btn_confirmar = ttk.Button(footer_res, text="CONFIRMAR CITA", command=self._on_confirmar, bootstyle="success")
         self.btn_confirmar.pack(fill="x", pady=(10, 0))
 
     def _crear_campo(self, parent, label_text, widget):
         ttk.Label(parent, text=label_text, font=("Segoe UI", 10)).pack(anchor="w")
         widget.pack(fill="x", pady=(2, 10))
-
-    # --- LÓGICA Y EVENTOS (SIN CAMBIOS) ---
 
     def _limpiar_y_cargar(self):
         for widget in self.horarios_container.winfo_children(): widget.destroy()
@@ -217,90 +183,68 @@ class PaginaAgendarCita(ttk.Frame):
             messagebox.showwarning("Validación", "Complete Paciente, Dentista, Tratamiento y Fecha.", parent=self)
             for widget in self.horarios_container.winfo_children(): widget.destroy()
             return
-
         threading.Thread(target=self._worker_buscar_fecha, args=(data,), daemon=True).start()
 
     def _worker_buscar_fecha(self, data):
         try:
-            resultados = controlador.buscar_horarios_disponibles(
+            # USAMOS EL SERVICIO DE CITAS
+            self.cola_resultados.put(sistema.cita.buscar_horarios(
                 data["fecha_str"], data["did"], data["tid"], data["pid"], data["turno"], data["dias"]
-            )
-            self.cola_resultados.put(resultados)
-        except Exception as e:
-            self.cola_resultados.put(e)
+            ))
+        except Exception as e: self.cola_resultados.put(e)
 
     def _on_buscar_proxima(self):
         self._limpiar_y_cargar()
         data = self._get_form_data()
-
         if not (data["pid"] and data["did"] and data["tid"]):
             messagebox.showwarning("Validación", "Seleccione Paciente, Dentista y Tratamiento.", parent=self)
             for widget in self.horarios_container.winfo_children(): widget.destroy()
             return
-        
         if not data["dias"]:
             messagebox.showwarning("Validación", "Seleccione al menos un día de preferencia.", parent=self)
             for widget in self.horarios_container.winfo_children(): widget.destroy()
             return
-
         threading.Thread(target=self._worker_buscar_proxima, args=(data,), daemon=True).start()
 
     def _worker_buscar_proxima(self, data):
         try:
-            resultados = controlador.encontrar_proxima_cita(
+            # USAMOS EL SERVICIO DE CITAS
+            self.cola_resultados.put(sistema.cita.encontrar_proxima(
                 data["did"], data["tid"], data["pid"], data["turno"], data["dias"]
-            )
-            self.cola_resultados.put(resultados)
-        except Exception as e:
-            self.cola_resultados.put(e)
+            ))
+        except Exception as e: self.cola_resultados.put(e)
 
     def _on_confirmar(self):
         if not self.selected_horario_card:
-            messagebox.showwarning("Atención", "Por favor, seleccione un horario haciendo clic en una tarjeta de la derecha.", parent=self)
+            messagebox.showwarning("Atención", "Seleccione un horario.", parent=self)
             return
-        
         sel = self.selected_horario_card.horario_data
         cid = self._parse_id_from_combo(self.cmb_consultorio.get())
-        
         if not cid:
-            messagebox.showwarning("Atención", "Debe asignar un Consultorio en la parte inferior derecha.", parent=self)
+            messagebox.showwarning("Atención", "Asigne un Consultorio.", parent=self)
             return
-
-        # Datos del formulario
         pid = self._parse_id_from_combo(self.cmb_paciente.get())
         did = self._parse_id_from_combo(self.cmb_dentista.get())
         tid = self._parse_id_from_combo(self.cmb_tratamiento.get())
         
         try:
-            new_id = controlador.confirmar_cita({
-                "paciente_id": pid, 
-                "dentista_id": did, 
-                "consultorio_id": cid,
-                "tratamiento_id": tid, 
-                "fecha": sel['fecha'], 
-                "hora_inicio": sel['hora']
+            # USAMOS EL SERVICIO DE CITAS
+            new_id = sistema.cita.confirmar_cita({
+                "paciente_id": pid, "dentista_id": did, "consultorio_id": cid,
+                "tratamiento_id": tid, "fecha": sel['fecha'], "hora_inicio": sel['hora']
             })
-            messagebox.showinfo("¡Cita Agendada!", f"La cita ha sido registrada con éxito.\nID: {new_id}", parent=self)
-            
-            # Limpiar resultados tras éxito
+            messagebox.showinfo("¡Cita Agendada!", f"Cita registrada. ID: {new_id}", parent=self)
             for widget in self.horarios_container.winfo_children(): widget.destroy()
             self.selected_horario_card = None
-            
-        except Exception as e:
-            messagebox.showerror("Error al Guardar", str(e), parent=self)
+        except Exception as e: messagebox.showerror("Error al Guardar", str(e), parent=self)
 
     def _cargar_dropdowns(self):
-        self._pacientes = controlador.obtener_lista_pacientes()
-        self.cmb_paciente["values"] = [f'{p["id"]} - {p["nombre"]}' for p in self._pacientes]
-        self._dentistas = controlador.obtener_lista_dentistas()
-        self.cmb_dentista["values"] = [f'{d["id"]} - {d["nombre"]} ({d["especialidad"]})' for d in self._dentistas]
-        self._tratamientos = controlador.obtener_lista_tratamientos()
-        self.cmb_tratamiento["values"] = [f'{t["id"]} - {t["nombre"]} ({t["duracion_minutos"]} min)' for t in self._tratamientos]
-        self._consultorios = controlador.obtener_lista_consultorios()
-        self.cmb_consultorio["values"] = [f'{c["id"]} - {c["nombre_sala"]}{" *" if int(c["equipo_especial"])==1 else ""}' for c in self._consultorios]
+        # USAMOS LOS SERVICIOS DE CADA ENTIDAD
+        self.cmb_paciente["values"] = [f'{p["id"]} - {p["nombre"]}' for p in sistema.paciente.obtener_todos()]
+        self.cmb_dentista["values"] = [f'{d["id"]} - {d["nombre"]} ({d["especialidad"]})' for d in sistema.dentista.obtener_todos()]
+        self.cmb_tratamiento["values"] = [f'{t["id"]} - {t["nombre"]} ({t["duracion_minutos"]} min)' for t in sistema.tratamiento.obtener_todos()]
+        self.cmb_consultorio["values"] = [f'{c["id"]} - {c["nombre_sala"]}{" *" if int(c["equipo_especial"])==1 else ""}' for c in sistema.consultorio.obtener_todos()]
 
     def _parse_id_from_combo(self, combo_text: str) -> int:
-        try:
-            return int(combo_text.split(" - ")[0])
-        except (ValueError, IndexError):
-            return 0
+        try: return int(combo_text.split(" - ")[0])
+        except (ValueError, IndexError): return 0
