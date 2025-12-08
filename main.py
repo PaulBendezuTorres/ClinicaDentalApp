@@ -5,7 +5,7 @@ import atexit
 from gui.vista_principal import App
 from gui.vista_login import VistaLogin
 from database.conexion import get_db_connection
-from logic import controlador
+from logic.sistema import sistema 
 
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
@@ -39,10 +39,10 @@ def iniciar_app_principal(parent_window, usuario_data):
 
 if __name__ == "__main__":
 
-    atexit.register(controlador.cerrar_prolog)
+    # CAMBIO 2: Usamos el servicio de citas a través del sistema para cerrar Prolog
+    atexit.register(sistema.cita.cerrar_motor)
 
     if _test_db_connection():
-
         login_window = VistaLogin(on_login_success=iniciar_app_principal)
         login_window.mainloop()
     else:

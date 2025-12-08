@@ -30,15 +30,19 @@ class CitaCard(ttk.Labelframe):
         ttk.Label(left_frame, text=hora_str, font=("Segoe UI", 22, "bold"), bootstyle=color_boot).pack()
         ttk.Label(left_frame, text=f"{estilo['icono']} {cita['estado']}", font=("Segoe UI", 10), bootstyle=color_boot).pack(pady=5)
 
-        # COLUMNA 2
+        # --- COLUMNA 2: DETALLES ---
         center_frame = ttk.Frame(self)
         center_frame.grid(row=0, column=1, sticky="ew")
-        ttk.Label(center_frame, text=cita['paciente'], font=("Segoe UI", 14, "bold"), bootstyle="light").pack(anchor="w")
-        ttk.Label(center_frame, text=f"Tratamiento: {cita['tratamiento']}", font=("Segoe UI", 11), bootstyle="info").pack(anchor="w", pady=(2,5))
-        info_doc = f"Dr(a): {cita['dentista']}  |  {cita['consultorio']}"
+        
+        # CORRECCIÓN: Usar 'paciente_nombre' en lugar de 'paciente'
+        ttk.Label(center_frame, text=cita['paciente_nombre'], font=("Segoe UI", 14, "bold"), bootstyle="light").pack(anchor="w")
+        
+        # CORRECCIÓN: Usar 'tratamiento_nombre'
+        ttk.Label(center_frame, text=f"Tratamiento: {cita['tratamiento_nombre']}", font=("Segoe UI", 11), bootstyle="info").pack(anchor="w", pady=(2,5))
+        
+        # CORRECCIÓN: Usar 'dentista_nombre' y 'consultorio_nombre'
+        info_doc = f"Dr(a): {cita['dentista_nombre']}  |  {cita['consultorio_nombre']}"
         ttk.Label(center_frame, text=info_doc, font=("Segoe UI", 10), bootstyle="light").pack(anchor="w")
-        if cita['fecha']: 
-             ttk.Label(center_frame, text=f"Fecha: {cita['fecha']}", font=("Segoe UI", 10), bootstyle="warning").pack(anchor="w")
 
         # COLUMNA 3
         right_frame = ttk.Frame(self)

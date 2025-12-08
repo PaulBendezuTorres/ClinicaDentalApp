@@ -1,8 +1,9 @@
 import ttkbootstrap as ttk
 import tkinter as tk
 from tkinter import messagebox
-from logic.sistema import sistema  # <-- NUEVO IMPORT
+from logic.sistema import sistema  
 from ttkbootstrap.scrolled import ScrolledFrame
+from datetime import datetime
 
 COLORES_ESTADO = {'Pendiente': 'warning', 'Confirmada': 'info', 'Realizada': 'success', 'Cancelada': 'danger'}
 
@@ -76,8 +77,8 @@ class VentanaHistorialPaciente(ttk.Toplevel):
         self.geometry(f"900x600+{x}+{y}")
 
     def _cargar_historial(self):
+
         for widget in self.cards_container.winfo_children(): widget.destroy()
-        # SERVICIO CITAS
         historial = sistema.cita.obtener_historial(self.paciente_id)
         dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
         
@@ -86,6 +87,18 @@ class VentanaHistorialPaciente(ttk.Toplevel):
             return
 
         for cita in historial:
-            dia_sem = dias[cita['fecha'].weekday()]
+
+            fecha_obj = cita['fecha']            
+            # Si es un string, lo convertimos a objeto date
+            if isinstance(fecha_obj, str):
+                try:
+                    fecha_obj = datetime.strptime(fecha_obj, '%Y-%m-%d').date()
+                except ValueError:
+                    # Si falla el formato, usamos la fecha de hoy como fallback o lo manejamos
+                    fecha_obj = datetime.today().date()           
+            # Ahora sí es seguro llamar a weekday()
+            dia_sem = dias[fecha_obj.weekday()]       
+            # También aseguramos que el objeto cita tenga la fecha como objeto datetime para la tarjeta
+            cita['fecha'] = fecha_obj 
             card = CitaHistorialCard(self.cards_container, cita, dia_sem, self._cargar_historial)
             card.pack(fill="x", pady=5, padx=5)
