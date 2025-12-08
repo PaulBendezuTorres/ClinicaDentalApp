@@ -82,8 +82,18 @@ def obtener_lista_pacientes(filtro: str = "") -> List[Dict]:
 
 def eliminar_paciente(paciente_id: int):
     return paciente_queries.desactivar_paciente(paciente_id)
+
 def obtener_lista_usuarios() -> List[Dict]:
     return usuario_queries.obtener_todos_usuarios()
+
+def registrar_dentista(nombre: str, especialidad: str):
+    dentista_queries.crear_dentista_db(nombre, especialidad)
+
+def modificar_dentista(dentista_id: int, nombre: str, especialidad: str):
+    dentista_queries.actualizar_dentista_db(dentista_id, nombre, especialidad)
+
+def borrar_dentista(dentista_id: int):
+    dentista_queries.eliminar_dentista_db(dentista_id)
 
 def registrar_usuario(nombre: str, contrasena: str, rol: str):
     # Hasheamos la contraseña antes de enviarla a la BD
