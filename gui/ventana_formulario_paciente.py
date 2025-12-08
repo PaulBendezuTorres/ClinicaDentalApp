@@ -4,13 +4,11 @@ from tkinter import messagebox
 class VentanaFormularioPaciente(ttk.Toplevel):
     def __init__(self, parent, callback, paciente_existente=None):
         title = "Editar Paciente" if paciente_existente else "Agregar Nuevo Paciente"
-        
-        # --- INICIO DE LA CORRECCIÓN ---
-        # Volvemos al método original, que funciona
+
         super().__init__(title=title)
         self.transient(parent)
         self.grab_set()
-        # --- FIN DE LA CORRECCIÓN ---
+
 
         self.callback = callback
         self.paciente_existente = paciente_existente

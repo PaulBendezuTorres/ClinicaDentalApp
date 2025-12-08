@@ -2,7 +2,6 @@ import ttkbootstrap as ttk
 from logic import controlador
 from ttkbootstrap.scrolled import ScrolledFrame
 
-# --- El Componente Reutilizable: Tarjeta de Cita Individual ---
 class CitaHistorialCard(ttk.Frame):
     def __init__(self, parent, cita_data, dia_semana):
         super().__init__(parent, padding=15, bootstyle="light")

@@ -82,6 +82,25 @@ def obtener_lista_pacientes(filtro: str = "") -> List[Dict]:
 
 def eliminar_paciente(paciente_id: int):
     return paciente_queries.desactivar_paciente(paciente_id)
+def obtener_lista_usuarios() -> List[Dict]:
+    return usuario_queries.obtener_todos_usuarios()
+
+def registrar_usuario(nombre: str, contrasena: str, rol: str):
+    # Hasheamos la contraseña antes de enviarla a la BD
+    salt = bcrypt.gensalt()
+    hash_pw = bcrypt.hashpw(contrasena.encode('utf-8'), salt).decode('utf-8')
+    usuario_queries.crear_usuario_db(nombre, hash_pw, rol)
+
+def modificar_usuario(user_id: int, nombre: str, rol: str, nueva_contrasena: str = None):
+    hash_pw = None
+    if nueva_contrasena:
+        salt = bcrypt.gensalt()
+        hash_pw = bcrypt.hashpw(nueva_contrasena.encode('utf-8'), salt).decode('utf-8')
+    
+    usuario_queries.actualizar_usuario_db(user_id, nombre, rol, hash_pw)
+
+def borrar_usuario(user_id: int):
+    usuario_queries.eliminar_usuario_db(user_id)
 
 def buscar_horarios_disponibles(fecha: str, dentista_id: int, tratamiento_id: int, paciente_id: int, 
                               filtro_turno: str = None, filtro_dias: list = None) -> List[Dict]:
