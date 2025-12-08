@@ -127,6 +127,12 @@ def registrar_usuario(nombre: str, contrasena: str, rol: str):
     salt = bcrypt.gensalt()
     hash_pw = bcrypt.hashpw(contrasena.encode('utf-8'), salt).decode('utf-8')
     usuario_queries.crear_usuario_db(nombre, hash_pw, rol)
+    
+def listar_citas(filtro: str = 'futuras') -> List[Dict]:
+    return cita_queries.obtener_todas_citas(filtro)
+
+def cambiar_estado_cita(cita_id: int, nuevo_estado: str):
+    cita_queries.actualizar_estado_cita_db(cita_id, nuevo_estado)
 
 def modificar_usuario(user_id: int, nombre: str, rol: str, nueva_contrasena: str = None):
     hash_pw = None

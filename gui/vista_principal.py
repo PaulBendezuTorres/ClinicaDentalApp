@@ -4,14 +4,7 @@ from PIL import Image, ImageTk
 from gui.vista_pacientes import PaginaPacientes
 from gui.vista_cita import PaginaAgendarCita
 from gui.vista_admin import PaginaAdministracion
-
-class PaginaDashboard(ttk.Frame):
-    # --- CORRECCIÓN AQUÍ: Se añade usuario_data=None ---
-    def __init__(self, parent, usuario_data=None):
-        super().__init__(parent)
-        self.usuario_data = usuario_data
-        ttk.Label(self, text="Dashboard - Citas de Hoy", font=("Segoe UI", 18, "bold")).pack(pady=20, padx=20)
-        # Aquí implementaremos la tabla de citas del día más adelante
+from gui.vista_dashboard import PaginaDashboard
 
 class App(ttk.Toplevel):
     def __init__(self, parent, usuario_data):

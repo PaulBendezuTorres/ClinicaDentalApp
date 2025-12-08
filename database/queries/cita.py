@@ -58,3 +58,44 @@ def obtener_citas_por_paciente(paciente_id: int) -> List[Dict]:
     data = fetch_all_dict(cur)
     cur.close(); cn.close()
     return data
+
+def obtener_todas_citas(filtro_fecha: str = None) -> List[Dict]:
+    """
+    Obtiene citas con detalles. Si filtro_fecha es 'hoy', trae solo las de hoy.
+    Si es None, trae las futuras.
+    """
+    cn = get_db_connection()
+    cur = cn.cursor()
+    
+    sql = """
+        SELECT 
+            c.id, c.fecha, c.hora_inicio, c.estado,
+            p.nombre AS paciente,
+            d.nombre AS dentista,
+            t.nombre AS tratamiento,
+            s.nombre_sala AS consultorio
+        FROM citas c
+        JOIN pacientes p ON c.paciente_id = p.id
+        JOIN dentistas d ON c.dentista_id = d.id
+        JOIN tratamientos t ON c.tratamiento_id = t.id
+        JOIN consultorios s ON c.consultorio_id = s.id
+    """
+    
+    params = []
+    if filtro_fecha == 'hoy':
+        sql += " WHERE c.fecha = CURDATE()"
+    elif filtro_fecha == 'futuras':
+        sql += " WHERE c.fecha >= CURDATE()"
+    
+    sql += " ORDER BY c.fecha, c.hora_inicio"
+    
+    cur.execute(sql, tuple(params))
+    data = fetch_all_dict(cur)
+    cur.close(); cn.close()
+    return data
+
+def actualizar_estado_cita_db(cita_id: int, nuevo_estado: str):
+    cn = get_db_connection()
+    cur = cn.cursor()
+    cur.execute("UPDATE citas SET estado = %s WHERE id = %s", (nuevo_estado, cita_id))
+    cur.close(); cn.close()
