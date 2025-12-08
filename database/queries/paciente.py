@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict
 from database.conexion import get_db_connection
 from database.db_utils import fetch_all_dict
 
@@ -28,9 +28,13 @@ def obtener_pacientes(filtro_nombre: str = "") -> List[Dict]:
 def crear_paciente(nombre: str, telefono: str, dni: str, direccion: str, correo: str, genero: str) -> int:
     cn = get_db_connection()
     cur = cn.cursor()
+    # El 0 final es el placeholder para el ID de salida
     args = (nombre, telefono, dni, direccion, correo, genero, 0)
+    # Nota: Asegúrate de que tu SP sp_crear_paciente tenga los parámetros en este orden
     result_args = cur.callproc('sp_crear_paciente', args)
-    new_id = result_args[6] # El índice del parámetro OUT depende de tu SP, asumiendo que es el último
+    # El índice del ID devuelto suele ser el último argumento. 
+    # Si tienes problemas con el ID, verifica el índice (ej: result_args[6])
+    new_id = result_args[6] 
     cur.close(); cn.close()
     return new_id
 
@@ -55,6 +59,8 @@ def desactivar_paciente(paciente_id: int):
     cur = cn.cursor()
     cur.execute("UPDATE pacientes SET activo = 0 WHERE id = %s", (paciente_id,))
     cur.close(); cn.close()
+
+# --- FUNCIONES PARA LA PAPELERA ---
 
 def obtener_pacientes_eliminados() -> List[Dict]:
     cn = get_db_connection()

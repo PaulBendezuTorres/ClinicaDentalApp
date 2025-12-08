@@ -59,11 +59,7 @@ def obtener_citas_por_paciente(paciente_id: int) -> List[Dict]:
     cur.close(); cn.close()
     return data
 
-def obtener_todas_citas(filtro_fecha: str = None) -> List[Dict]:
-    """
-    Obtiene citas con detalles. Si filtro_fecha es 'hoy', trae solo las de hoy.
-    Si es None, trae las futuras.
-    """
+def obtener_todas_citas(filtro_fecha: str = None, busqueda: str = "") -> List[Dict]:
     cn = get_db_connection()
     cur = cn.cursor()
     
@@ -79,13 +75,22 @@ def obtener_todas_citas(filtro_fecha: str = None) -> List[Dict]:
         JOIN dentistas d ON c.dentista_id = d.id
         JOIN tratamientos t ON c.tratamiento_id = t.id
         JOIN consultorios s ON c.consultorio_id = s.id
+        WHERE 1=1
     """
     
     params = []
+    
+    # 1. Filtro de Fecha
     if filtro_fecha == 'hoy':
-        sql += " WHERE c.fecha = CURDATE()"
+        sql += " AND c.fecha = CURDATE()"
     elif filtro_fecha == 'futuras':
-        sql += " WHERE c.fecha >= CURDATE()"
+        sql += " AND c.fecha >= CURDATE()"
+    # Si es 'todas', no agregamos restricción de fecha
+    
+    # 2. Filtro de Búsqueda (Nombre del paciente)
+    if busqueda:
+        sql += " AND p.nombre LIKE %s"
+        params.append(f"%{busqueda}%")
     
     sql += " ORDER BY c.fecha, c.hora_inicio"
     
