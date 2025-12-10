@@ -7,7 +7,7 @@ def _esc(s: str) -> str:
     return s.replace("'", "\\'")
 
 def _format_time(time_obj) -> str:
-    """Formatea objetos de tiempo a HH:MM."""
+    """Formatea objetos de tiempo a HH:MM de forma robusta."""
     if time_obj is None: return "00:00"
     
     if isinstance(time_obj, str):
@@ -34,15 +34,19 @@ def _format_time(time_obj) -> str:
 def _calcular_hora_fin(hora_inicio, duracion_minutos) -> str:
     """Calcula la hora de fin sumando minutos."""
     segundos_inicio = 0
+    # Normalizar hora inicio a segundos
     if isinstance(hora_inicio, timedelta):
         segundos_inicio = int(hora_inicio.total_seconds())
     elif isinstance(hora_inicio, str):
         try:
             h, m = map(int, _format_time(hora_inicio).split(':'))
             segundos_inicio = h * 3600 + m * 60
-        except: return "23:59" # Fallback seguro
+        except: return "23:59"
+    elif hasattr(hora_inicio, 'hour'): # datetime o time
+        segundos_inicio = hora_inicio.hour * 3600 + hora_inicio.minute * 60
     
     segundos_totales = segundos_inicio + (duracion_minutos * 60)
+    
     hours = segundos_totales // 3600
     minutes = (segundos_totales % 3600) // 60
     return f"{hours:02}:{minutes:02}"
@@ -56,15 +60,22 @@ req_logic: Callable[[int], str] = lambda r: "si" if r == 1 else "no"
 def generar_hechos_prolog_citas(lista_citas_db: List[Dict]) -> str:
     """
     Genera hechos: cita_ocupada(Dentista, Fecha, HoraInicio, HoraFin).
+    ¡ESTA ES LA PARTE CLAVE QUE FALTABA!
     """
     citas_facts = []
     for c in lista_citas_db:
         dname = _esc(c['dentista_nombre'])
         fecha = format_date(c['fecha'])
         ini = _format_time(c['hora_inicio'])
-        # Calculamos el fin basándonos en la duración
-        fin = _calcular_hora_fin(c['hora_inicio'], c.get('duracion_minutos', 30)) # Default 30 si falla
         
+        # Obtenemos la duración de la cita agendada (o 30 por defecto)
+        duracion = c.get('duracion_minutos')
+        if not duracion: duracion = 30 
+        
+        # Calculamos cuándo termina esa cita
+        fin = _calcular_hora_fin(c['hora_inicio'], int(duracion))
+        
+        # Generamos el hecho con 4 ARGUMENTOS
         citas_facts.append(f"cita_ocupada('{dname}','{fecha}','{ini}','{fin}').")
 
     duracion_facts = {

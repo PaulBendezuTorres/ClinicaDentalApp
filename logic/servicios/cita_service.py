@@ -94,8 +94,10 @@ class CitaService:
         rangos = list(prolog.query(f"horario_laboral('{dname}','{dia_semana}', Ini, Fin)"))
         if not rangos: return []
 
+        # Generar slots basados en la duración del tratamiento + tiempo de limpieza (15 min)
+        duracion_slot = tratamiento.duracion_minutos + 15
         slots = []
-        for r in rangos: slots += self._generar_slots(r["Ini"], r["Fin"])
+        for r in rangos: slots += self._generar_slots(r["Ini"], r["Fin"], duracion_slot)
 
         consultorios = self.consultorio_dao.obtener_todos()
         cons_esp_ids = [c.id for c in consultorios if c.equipo_especial]
@@ -150,11 +152,22 @@ class CitaService:
     def _dia_semana_es(self, d):
         return ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"][d.weekday()]
     
-    def _generar_slots(self, inicio, fin):
+    def _generar_slots(self, inicio, fin, intervalo_minutos=30):
+        """
+        Genera slots de tiempo entre inicio y fin con el intervalo especificado.
+        
+        Args:
+            inicio: Hora de inicio en formato HH:MM
+            fin: Hora de fin en formato HH:MM
+            intervalo_minutos: Intervalo entre slots en minutos (por defecto 30)
+        
+        Returns:
+            Lista de slots en formato HH:MM
+        """
         h0 = datetime.strptime(inicio, "%H:%M")
         h1 = datetime.strptime(fin, "%H:%M")
         slots = []
         while h0 < h1:
             slots.append(h0.strftime("%H:%M"))
-            h0 += timedelta(minutes=30)
+            h0 += timedelta(minutes=intervalo_minutos)
         return slots

@@ -4,7 +4,6 @@ from clases.cita import Cita
 
 class CitaDAO:
     def _map_row(self, row) -> Cita:
-        # Mapeo flexible: algunos campos pueden no venir en todas las consultas
         return Cita(
             id=row.get('id'),
             paciente_id=row.get('paciente_id'),
@@ -26,6 +25,9 @@ class CitaDAO:
     def obtener_por_fecha(self, fecha: str) -> List[Cita]:
         cn = get_db_connection()
         cur = cn.cursor(dictionary=True)
+        # CORRECCIÓN IMPORTANTE:
+        # 1. Traemos t.duracion_minutos (vital para calcular solapamientos).
+        # 2. Agregamos "AND c.estado != 'Cancelada'" para liberar horarios cancelados.
         cur.execute("""
             SELECT 
                 c.*, 
@@ -33,13 +35,14 @@ class CitaDAO:
                 d.nombre AS dentista_nombre,
                 s.nombre_sala AS consultorio_nombre,
                 t.nombre AS tratamiento_nombre,
-                t.duracion_minutos, t.requiere_equipo_especial
+                t.duracion_minutos, 
+                t.requiere_equipo_especial
             FROM citas c
             JOIN pacientes p ON p.id = c.paciente_id
             JOIN dentistas d ON d.id = c.dentista_id
             JOIN consultorios s ON s.id = c.consultorio_id
             JOIN tratamientos t ON t.id = c.tratamiento_id
-            WHERE c.fecha = %s
+            WHERE c.fecha = %s AND c.estado != 'Cancelada'
             ORDER BY c.hora_inicio
         """, (fecha,))
         rows = cur.fetchall()
