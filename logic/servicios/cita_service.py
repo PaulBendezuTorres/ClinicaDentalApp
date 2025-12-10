@@ -15,7 +15,6 @@ from logic import procesador
 
 class CitaService:
     def __init__(self):
-        # Instanciamos los DAOs necesarios
         self.cita_dao = CitaDAO()
         self.horario_dao = HorarioDAO()
         self.dentista_dao = DentistaDAO()
@@ -23,10 +22,8 @@ class CitaService:
         self.paciente_dao = PacienteDAO()
         self.consultorio_dao = ConsultorioDAO()
         
-        # Variables de Prolog
         self._prolog_engine = None
 
-    # --- LÓGICA PROLOG ---
     def _inicializar_prolog(self):
         if self._prolog_engine is None:
             self._prolog_engine = Prolog()
@@ -35,7 +32,7 @@ class CitaService:
 
     def _limpiar_hechos(self):
         p = self._prolog_engine
-        p.retractall("cita_ocupada(_,_,_)")
+        p.retractall("cita_ocupada(_,_,_,_)")
         p.retractall("paciente_no_disponible(_,_)")
         p.retractall("filtro_turno(_)")
         p.retractall("filtro_dia(_)")
@@ -51,7 +48,6 @@ class CitaService:
                 print("Motor Prolog cerrado.")
             except: pass
 
-    # --- BÚSQUEDA INTELIGENTE ---
     def buscar_horarios(self, fecha: str, dentista_id: int, tratamiento_id: int, paciente_id: int, 
                         filtro_turno: str = None, filtro_dias: list = None) -> List[Dict]:
         
@@ -59,13 +55,10 @@ class CitaService:
         self._limpiar_hechos()
         prolog = self._prolog_engine
 
-        # 1. Obtener Datos de la BD (Usando DAOs y convirtiendo a dicts para el procesador)
-        # Nota: El procesador espera dicts, así que usamos asdict o acceso manual
         citas_objs = self.cita_dao.obtener_por_fecha(fecha)
         citas_dicts = [asdict(c) for c in citas_objs]
         
         horarios_objs = self.horario_dao.obtener_todos_para_reglas()
-        # Filtramos en memoria solo los del dentista (optimización)
         horarios_dicts = [asdict(h) for h in horarios_objs if h.dentista_id == dentista_id]
         
         tratamiento = self.tratamiento_dao.obtener_por_id(tratamiento_id)
@@ -75,25 +68,25 @@ class CitaService:
         dentista = self.dentista_dao.obtener_por_id(dentista_id)
         if not dentista: return []
 
-        preferencias = self.paciente_dao.obtener_preferencias(paciente_id) # Ya devuelve dicts
+        preferencias = self.paciente_dao.obtener_preferencias(paciente_id) 
 
-        # 2. Generar Hechos (Strings) usando el procesador funcional
         hechos_citas = procesador.generar_hechos_prolog_citas(citas_dicts)
         hechos_horarios = procesador.generar_hechos_prolog_horarios(horarios_dicts)
         hechos_trat = procesador.generar_hechos_prolog_tratamiento_unico(trat_dict)
 
-        # 3. Insertar en Prolog
         for linea in (hechos_citas + "\n" + hechos_horarios + "\n" + hechos_trat).splitlines():
             if linea.strip(): prolog.assertz(linea.strip()[:-1])
 
         for pref in preferencias:
             prolog.assertz(f"paciente_no_disponible('{pref['dia_semana']}', '{pref['turno']}')")
 
-        if filtro_turno: prolog.assertz(f"filtro_turno('{filtro_turno.lower()}')")
+        if filtro_turno:
+            turno_safe = filtro_turno.lower().replace("ñ", "n")
+            prolog.assertz(f"filtro_turno('{turno_safe}')")
+        
         if filtro_dias: 
             for d in filtro_dias: prolog.assertz(f"filtro_dia('{d}')")
 
-        # 4. Consultar
         fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
         dia_semana = self._dia_semana_es(fecha_dt)
         dname = dentista.nombre.replace("'", "\\'")
@@ -104,18 +97,15 @@ class CitaService:
         slots = []
         for r in rangos: slots += self._generar_slots(r["Ini"], r["Fin"])
 
-        # Lógica Equipo Especial
         consultorios = self.consultorio_dao.obtener_todos()
         cons_esp_ids = [c.id for c in consultorios if c.equipo_especial]
         
         if cons_esp_ids:
             for hhmm in slots:
-                # Contar citas en consultorios especiales a esa hora
-                ocupados = sum(1 for c in citas_objs if c.hora_inicio[:5] == hhmm and c.consultorio_id in cons_esp_ids)
+                ocupados = len([c for c in citas_objs if c.hora_inicio[:5] == hhmm and c.consultorio_id in cons_esp_ids])
                 if ocupados < len(cons_esp_ids):
                     prolog.assertz(f"equipo_especial_disponible('{fecha}','{hhmm}')")
 
-        # 5. Filtrar final
         tname = tratamiento.nombre.replace("'", "\\'")
         resultados_validos = []
         for hhmm in slots:
@@ -136,7 +126,6 @@ class CitaService:
             fecha_actual += timedelta(days=1)
         return []
 
-    # --- CRUD Y OTROS ---
     def confirmar_cita(self, datos: Dict) -> int:
         nueva = Cita(
             paciente_id=datos['paciente_id'],
@@ -150,7 +139,7 @@ class CitaService:
 
     def listar_dashboard(self, filtro, busqueda):
         citas = self.cita_dao.obtener_todas_dashboard(filtro, busqueda)
-        return [asdict(c) for c in citas] # Convertir a dicts para la UI
+        return [asdict(c) for c in citas] 
 
     def cambiar_estado(self, id, estado):
         self.cita_dao.actualizar_estado(id, estado)
@@ -158,7 +147,6 @@ class CitaService:
     def obtener_historial(self, pid):
         return [asdict(c) for c in self.cita_dao.obtener_historial_paciente(pid)]
 
-    # Helpers
     def _dia_semana_es(self, d):
         return ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"][d.weekday()]
     
@@ -170,4 +158,3 @@ class CitaService:
             slots.append(h0.strftime("%H:%M"))
             h0 += timedelta(minutes=30)
         return slots
-    
